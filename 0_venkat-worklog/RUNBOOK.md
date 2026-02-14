@@ -270,3 +270,25 @@ MINISGL_TOKENIZER_BACKEND=rust_inprocess python -m minisgl \
   --host 127.0.0.1 \
   --port 1919
 ```
+
+## 9. Typed Transport Mode (Schema v1)
+
+Enable typed message transport (legacy remains default and decoder stays dual-stack):
+
+```bash
+cd mini-sglang
+source .venv/bin/activate
+MINISGL_TYPED_TRANSPORT=1 python -m minisgl \
+  --model-path Qwen/Qwen2.5-0.5B-Instruct \
+  --host 127.0.0.1 \
+  --port 1919
+```
+
+Microbenchmark transport encode+msgpack+decode overhead:
+
+```bash
+cd mini-sglang
+source .venv/bin/activate
+python -m minisgl.benchmark.transport_overhead \
+  --out 0_venkat-worklog/baselines/latest-transport-overhead.json
+```

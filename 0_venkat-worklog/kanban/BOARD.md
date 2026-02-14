@@ -15,6 +15,8 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 - Online: Rust backend ahead (latest run delta `+0.69%` throughput).
 - Shadow parity check (offline deterministic corpus): `0` divergences logged.
 - Deterministic token parity check (`python` vs `rust_hotpath`): passed for both text and token prompt sets.
+- Tokenizer-heavy online rerun: Rust tokenizer backends remain behind Python tokenizer on this machine (`~5%` to `~7%` delta in latest controlled sequential runs).
+- Typed transport microbench (new schema v1) shows strong CPU-side serialization gain (`+74%` backend ops/s, `+107%` tokenizer ops/s).
 - Details recorded in `0_venkat-worklog/baselines/2026-02-14-rtx3060-qwen2.5-0.5b.md`.
 - Parity corpus details: `0_venkat-worklog/baselines/2026-02-14-shadow-parity-corpus.md`.
 
@@ -24,6 +26,7 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 - Recorded run results: `0_venkat-worklog/baselines/2026-02-14-rtx3060-qwen2.5-0.5b.md`
 - Tokenizer backend A/B: `0_venkat-worklog/baselines/2026-02-14-tokenizer-backend-ab.md`
 - Tokenizer research note: `0_venkat-worklog/research/2026-02-14-rust-tokenizer-landscape.md`
+- Typed transport microbench: `0_venkat-worklog/baselines/latest-transport-overhead.json`
 
 ## Privacy Guardrails (Public Repo)
 
@@ -42,7 +45,7 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 ## Priority Order (Execution Sequence)
 
 1. `in-progress/P1-008-rust-tokenizer-detokenizer-service.md`
-2. `todo/P1-009-typed-transport-migration.md`
+2. `in-progress/P1-009-typed-transport-migration.md`
 3. `todo/P1-010-observability-and-release-gates.md`
 4. `todo/P1-011-rust-cpu-service-cutover-no-inprocess-ffi.md`
 5. `todo/P1-012-remove-pyo3-runtime-path.md`

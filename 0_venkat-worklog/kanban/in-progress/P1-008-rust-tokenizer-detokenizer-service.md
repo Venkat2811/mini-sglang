@@ -70,3 +70,11 @@ Move tokenizer/detokenizer worker path from Python process to Rust service imple
   - rust_inprocess backend: `884.22 tok/s` (`-4.68%`)
   - rust_tokenize_only backend: `887.31 tok/s` (`-4.35%`)
   - details: `0_venkat-worklog/baselines/2026-02-14-tokenizer-backend-ab.md`
+- Controlled sequential rerun (one backend at a time, explicit `MASTER_PORT`, `MINISGL_CPU_BACKEND=rust_hotpath`) still showed Rust tokenizer behind on this profile:
+  - python tokenizer: `938.12 tok/s`
+  - rust_tokenize_only: `886.28 tok/s` (`-5.53%`)
+  - rust_inprocess: `877.39 tok/s` (`-6.47%`)
+- Follow-up variant (`torch.frombuffer` no-clone) remained below python tokenizer path:
+  - rust_tokenize_only: `-7.63%`
+  - rust_inprocess: `-5.13%`
+- Decision: keep tokenizer work as active but non-blocking; prioritize typed transport migration (`P1-009`) for broader CPU-side overhead reduction.

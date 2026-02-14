@@ -76,6 +76,7 @@ class EnvClassSingleton:
     CPU_BACKEND_SHADOW_MAX_DIFFS = EnvInt(128)
     CPU_BACKEND_SHADOW_EVERY_N = EnvInt(1)
     TOKENIZER_BACKEND = EnvVar("python", fn=lambda x: x.strip().lower())
+    TYPED_TRANSPORT = EnvBool(False)
 
     def __new__(cls):
         # single instance

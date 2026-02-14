@@ -17,8 +17,8 @@ class RustTokenizerManagers:
         buffers = self._worker.tokenize(prompts)
         out: List[torch.Tensor] = []
         for buffer in buffers:
-            # Clone so tensor lifetime is decoupled from the Python buffer object.
-            out.append(torch.frombuffer(memoryview(buffer), dtype=torch.int32).clone())
+            # Keep tokenizer output zero-copy on CPU to reduce per-request overhead.
+            out.append(torch.frombuffer(memoryview(buffer), dtype=torch.int32))
         return out
 
     def detokenize(self, msgs: List[DetokenizeMsg]) -> List[str]:
