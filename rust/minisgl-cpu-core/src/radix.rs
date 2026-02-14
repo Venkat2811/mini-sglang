@@ -257,7 +257,7 @@ impl PrefixCacheManager for RadixCacheManager {
         }
 
         let matched_node = node.clone();
-        let mut segments = Vec::<Vec<i32>>::new();
+        let mut chain = Vec::<NodeRef>::new();
         let mut cursor = node;
 
         loop {
@@ -266,7 +266,7 @@ impl PrefixCacheManager for RadixCacheManager {
                 if borrowed.is_root() {
                     break;
                 }
-                segments.push(borrowed.value.clone());
+                chain.push(cursor.clone());
                 borrowed.parent.as_ref().and_then(Weak::upgrade)
             };
             cursor = parent.ok_or(CacheError::CorruptedTree {
@@ -274,11 +274,12 @@ impl PrefixCacheManager for RadixCacheManager {
             })?;
         }
 
-        segments.reverse();
-        let total = segments.iter().map(Vec::len).sum();
+        chain.reverse();
+        let total = chain.iter().map(|n| n.borrow().value.len()).sum();
         let mut indices = Vec::with_capacity(total);
-        for seg in segments {
-            indices.extend(seg);
+        for segment in chain {
+            let borrowed = segment.borrow();
+            indices.extend_from_slice(&borrowed.value);
         }
 
         Ok((RadixCacheHandle::new(prefix_len, matched_node), indices))

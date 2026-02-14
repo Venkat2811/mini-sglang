@@ -30,15 +30,14 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 
 ## Priority Order (Execution Sequence)
 
-1. `in-progress/P0-003-rust-radix-cache-equivalence.md`
-2. `todo/P0-004-rust-prefill-admission-and-batch-mapping.md`
-3. `todo/P0-005-pyo3-bindings-and-python-integration.md`
-4. `todo/P0-006-shadow-mode-and-parity-corpus.md`
-5. `todo/P1-007-rust-gateway-skeleton-axum.md`
-6. `todo/P1-008-rust-tokenizer-detokenizer-service.md`
-7. `todo/P1-009-typed-transport-migration.md`
-8. `todo/P1-010-observability-and-release-gates.md`
-9. `backlog/BK-001-super-optimized-runtime-track.md`
+1. `in-progress/P0-004-rust-prefill-admission-and-batch-mapping.md`
+2. `todo/P0-005-pyo3-bindings-and-python-integration.md`
+3. `todo/P0-006-shadow-mode-and-parity-corpus.md`
+4. `todo/P1-007-rust-gateway-skeleton-axum.md`
+5. `todo/P1-008-rust-tokenizer-detokenizer-service.md`
+6. `todo/P1-009-typed-transport-migration.md`
+7. `todo/P1-010-observability-and-release-gates.md`
+8. `backlog/BK-001-super-optimized-runtime-track.md`
 
 ## Definition of Done (Per Card)
 

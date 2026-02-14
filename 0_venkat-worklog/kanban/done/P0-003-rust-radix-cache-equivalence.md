@@ -1,7 +1,7 @@
 # P0-003: Rust Radix Cache Equivalence
 
 Priority: P0  
-Status: in-progress  
+Status: done  
 Depends on: P0-002
 
 ## Objective
@@ -33,14 +33,14 @@ Port CPU radix cache manager behavior to Rust with strict behavioral parity vs `
 - [x] Implement Rust radix manager until all tests pass.
 
 3. Refactor
-- [ ] Optimize hot loops (token compare and traversal) without changing API.
-- [ ] Add microbench test for `match_prefix`.
+- [x] Optimize hot loops (token compare and traversal) without changing API.
+- [x] Add microbench test for `match_prefix`.
 
 ## Acceptance Criteria
 
-- [ ] Rust and Python managers produce identical outcomes for golden traces.
-- [ ] No correctness regression under stress tests.
-- [ ] At least neutral or better performance vs Python on cache operations.
+- [x] Rust and Python managers produce identical outcomes for golden traces.
+- [x] No correctness regression under stress tests.
+- [x] At least neutral or better performance vs Python on cache operations.
 
 ## Progress Notes (2026-02-14)
 
@@ -60,3 +60,22 @@ Port CPU radix cache manager behavior to Rust with strict behavioral parity vs `
   - `cargo test -p minisgl-cpu-core` passed.
   - `cargo clippy -p minisgl-cpu-core --all-targets -- -D warnings` passed.
   - `cargo test --workspace` passed.
+
+## Closure Evidence (2026-02-14)
+
+- Golden trace parity:
+  - Added exporter: `rust/scripts/export_radix_trace.py`.
+  - Added replay test: `rust/minisgl-cpu-core/tests/radix_python_trace_parity.rs`.
+  - Generated trace payload: `rust/minisgl-cpu-core/tests/data/radix_golden_trace.yaml`.
+  - Result: replay test passed with exact output and size-info parity at each operation.
+- Stress correctness:
+  - Added randomized stress test: `rust/minisgl-cpu-core/tests/radix_stress.rs`.
+  - Result: integrity preserved over 1,000 mixed operations.
+- Refactor + microbench:
+  - Reduced `match_prefix` reconstruction overhead in `rust/minisgl-cpu-core/src/radix.rs` by avoiding intermediate vector cloning.
+  - Added Rust microbench: `rust/minisgl-cpu-core/examples/radix_match_prefix_bench.rs`.
+  - Added Python counterpart: `rust/scripts/bench_python_radix.py`.
+  - Measured on this machine:
+    - Rust: `rust_match_prefix_ops_per_sec=11109948.68`
+    - Python: `python_match_prefix_ops_per_sec=80197.46`
+  - Outcome: Rust is significantly better than Python for this cache operation benchmark.

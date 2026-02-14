@@ -1,0 +1,176 @@
+{
+  "version": 1,
+  "generator": "rust/scripts/export_prefill_trace.py",
+  "adder_cases": [
+    {
+      "name": "only_prefill",
+      "token_budget": 16,
+      "reserved_size": 0,
+      "cache_available_size": 64,
+      "table_slots": [
+        2
+      ],
+      "cached_len": 1,
+      "match_indices": [
+        99
+      ],
+      "lock_impact": 0,
+      "input_ids": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "output_len": 3,
+      "expected": {
+        "admitted": true,
+        "token_budget_after": 12,
+        "reserved_size_after": 7,
+        "is_chunked": false,
+        "cached_len": 1,
+        "device_len": 5,
+        "table_idx": 2,
+        "extend_len": 4,
+        "remain_len": 3,
+        "can_decode": true
+      }
+    },
+    {
+      "name": "mixed_chunked_prefill",
+      "token_budget": 2,
+      "reserved_size": 0,
+      "cache_available_size": 64,
+      "table_slots": [
+        3
+      ],
+      "cached_len": 1,
+      "match_indices": [
+        99
+      ],
+      "lock_impact": 0,
+      "input_ids": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "output_len": 3,
+      "expected": {
+        "admitted": true,
+        "token_budget_after": 0,
+        "reserved_size_after": 7,
+        "is_chunked": true,
+        "cached_len": 1,
+        "device_len": 3,
+        "table_idx": 3,
+        "extend_len": 2,
+        "remain_len": 3,
+        "can_decode": false
+      }
+    },
+    {
+      "name": "near_capacity_reject",
+      "token_budget": 16,
+      "reserved_size": 2,
+      "cache_available_size": 10,
+      "table_slots": [
+        4
+      ],
+      "cached_len": 1,
+      "match_indices": [
+        99
+      ],
+      "lock_impact": 0,
+      "input_ids": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "output_len": 5,
+      "expected": {
+        "admitted": false,
+        "token_budget_after": 16,
+        "reserved_size_after": 2
+      }
+    },
+    {
+      "name": "decode_inflight_recheck_reject",
+      "token_budget": 16,
+      "reserved_size": 2,
+      "cache_available_size": 12,
+      "table_slots": [
+        5
+      ],
+      "cached_len": 1,
+      "match_indices": [
+        99
+      ],
+      "lock_impact": 2,
+      "input_ids": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "output_len": 5,
+      "expected": {
+        "admitted": false,
+        "token_budget_after": 16,
+        "reserved_size_after": 2
+      }
+    }
+  ],
+  "mapping_case": {
+    "name": "mixed_prefill_decode_mappings",
+    "positions": [
+      2,
+      3,
+      4,
+      1,
+      2,
+      4
+    ],
+    "input_mapping": [
+      7,
+      7,
+      7,
+      9,
+      9,
+      11
+    ],
+    "input_positions": [
+      2,
+      3,
+      4,
+      1,
+      2,
+      4
+    ],
+    "write_req_mapping": [
+      7,
+      9,
+      11
+    ],
+    "write_pos": [
+      5,
+      -1,
+      5
+    ]
+  },
+  "decode_only_case": {
+    "name": "only_decode_write_mapping",
+    "write_req_mapping": [
+      13,
+      14
+    ],
+    "write_pos": [
+      6,
+      4
+    ]
+  }
+}
