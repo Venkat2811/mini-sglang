@@ -1,6 +1,7 @@
 from .mini_sgl_cpu_rs import (
     RadixCacheManager,
     SamplingParams,
+    TokenizerWorker,
     core_version,
     make_metadata_buffers,
     make_input_mapping,
@@ -13,6 +14,7 @@ from .mini_sgl_cpu_rs import (
 __all__ = [
     "SamplingParams",
     "RadixCacheManager",
+    "TokenizerWorker",
     "ping",
     "core_version",
     "make_metadata_buffers",

@@ -6,10 +6,14 @@ use minisgl_cpu_core::{
     PrefillTable, PrefixCacheManager, RadixCacheHandle, RadixCacheManager, SamplingParams,
     ScheduledReq,
 };
+use minisgl_cpu_tokenizer::{
+    ChatMessage, DetokenizeManager, DetokenizeRequest, HfTokenizerBackend, PromptInput,
+    TokenizeManager, TokenizeRequest,
+};
 use pyo3::{
     exceptions::{PyKeyError, PyRuntimeError, PyValueError},
     prelude::*,
-    types::PyByteArray,
+    types::{PyAny, PyByteArray},
 };
 
 #[pyclass(name = "SamplingParams")]
@@ -379,6 +383,114 @@ fn core_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
+#[pyclass(name = "TokenizerWorker", unsendable)]
+struct PyTokenizerWorker {
+    tokenize_manager: TokenizeManager<HfTokenizerBackend>,
+    detokenize_manager: DetokenizeManager<HfTokenizerBackend>,
+}
+
+fn parse_chat_message(raw: &HashMap<String, String>) -> PyResult<ChatMessage> {
+    let role = raw
+        .get("role")
+        .cloned()
+        .ok_or_else(|| PyValueError::new_err("chat message missing 'role'"))?;
+    let content = raw
+        .get("content")
+        .cloned()
+        .ok_or_else(|| PyValueError::new_err("chat message missing 'content'"))?;
+    Ok(ChatMessage { role, content })
+}
+
+fn parse_prompt_input(obj: &Bound<'_, PyAny>) -> PyResult<PromptInput> {
+    if let Ok(text) = obj.extract::<String>() {
+        return Ok(PromptInput::Text { text });
+    }
+    if let Ok(messages) = obj.extract::<Vec<HashMap<String, String>>>() {
+        let parsed = messages
+            .iter()
+            .map(parse_chat_message)
+            .collect::<PyResult<Vec<ChatMessage>>>()?;
+        return Ok(PromptInput::Messages { messages: parsed });
+    }
+    Err(PyValueError::new_err(
+        "prompt must be str or list[dict[str, str]]",
+    ))
+}
+
+#[pymethods]
+impl PyTokenizerWorker {
+    #[new]
+    fn new(tokenizer_path: String) -> PyResult<Self> {
+        let tokenize_backend =
+            HfTokenizerBackend::from_model_path(&tokenizer_path).map_err(cache_err)?;
+        let detokenize_backend =
+            HfTokenizerBackend::from_model_path(&tokenizer_path).map_err(cache_err)?;
+        Ok(Self {
+            tokenize_manager: TokenizeManager::new(tokenize_backend),
+            detokenize_manager: DetokenizeManager::new(detokenize_backend),
+        })
+    }
+
+    fn tokenize<'py>(
+        &self,
+        py: Python<'py>,
+        prompts: Vec<Bound<'py, PyAny>>,
+    ) -> PyResult<Vec<Bound<'py, PyByteArray>>> {
+        let mut requests = Vec::with_capacity(prompts.len());
+        for (idx, prompt) in prompts.iter().enumerate() {
+            let uid = idx as u64;
+            let parsed = parse_prompt_input(prompt)?;
+            requests.push(TokenizeRequest {
+                uid,
+                prompt: parsed,
+            });
+        }
+
+        let outputs = self
+            .tokenize_manager
+            .tokenize(&requests)
+            .map_err(cache_err)?;
+        let mut out = Vec::with_capacity(outputs.len());
+        for output in outputs {
+            out.push(vec_i32_to_bytearray(py, &output.input_ids));
+        }
+        Ok(out)
+    }
+
+    fn detokenize(
+        &mut self,
+        uids: Vec<u64>,
+        next_tokens: Vec<i32>,
+        finished: Vec<bool>,
+    ) -> PyResult<Vec<String>> {
+        let n = uids.len();
+        if n != next_tokens.len() || n != finished.len() {
+            return Err(PyValueError::new_err(
+                "uids, next_tokens, and finished lengths must match",
+            ));
+        }
+        let requests = uids
+            .into_iter()
+            .zip(next_tokens)
+            .zip(finished)
+            .map(|((uid, next_token), finished)| DetokenizeRequest {
+                uid,
+                next_token,
+                finished,
+            })
+            .collect::<Vec<DetokenizeRequest>>();
+
+        let outputs = self
+            .detokenize_manager
+            .detokenize(&requests)
+            .map_err(cache_err)?;
+        Ok(outputs
+            .into_iter()
+            .map(|output| output.incremental_output)
+            .collect())
+    }
+}
+
 #[pymodule]
 fn mini_sgl_cpu_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(ping, m)?)?;
@@ -390,5 +502,6 @@ fn mini_sgl_cpu_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(prefill_admission_plan, m)?)?;
     m.add_class::<PySamplingParams>()?;
     m.add_class::<PyRadixCacheManager>()?;
+    m.add_class::<PyTokenizerWorker>()?;
     Ok(())
 }

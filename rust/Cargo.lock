@@ -1404,6 +1404,7 @@ name = "minisgl-cpu-py"
 version = "0.1.0"
 dependencies = [
  "minisgl-cpu-core",
+ "minisgl-cpu-tokenizer",
  "pyo3",
 ]
 

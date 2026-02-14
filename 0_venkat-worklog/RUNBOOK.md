@@ -251,3 +251,22 @@ cd mini-sglang/python
   --master-port 2420 \
   --out ../0_venkat-worklog/baselines/latest-token-parity-shared-prefix.json
 ```
+
+## 8. Tokenizer Backend Modes
+
+The tokenizer worker supports backend selection via env:
+
+- `MINISGL_TOKENIZER_BACKEND=python` (default)
+- `MINISGL_TOKENIZER_BACKEND=rust_inprocess` (Rust tokenize + Rust detokenize)
+- `MINISGL_TOKENIZER_BACKEND=rust_tokenize_only` (Rust tokenize + Python detokenize)
+
+Example:
+
+```bash
+cd mini-sglang
+source .venv/bin/activate
+MINISGL_TOKENIZER_BACKEND=rust_inprocess python -m minisgl \
+  --model-path Qwen/Qwen2.5-0.5B-Instruct \
+  --host 127.0.0.1 \
+  --port 1919
+```

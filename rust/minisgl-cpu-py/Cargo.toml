@@ -11,3 +11,4 @@ crate-type = ["cdylib"]
 [dependencies]
 pyo3.workspace = true
 minisgl-cpu-core = { path = "../minisgl-cpu-core" }
+minisgl-cpu-tokenizer = { path = "../minisgl-cpu-tokenizer" }

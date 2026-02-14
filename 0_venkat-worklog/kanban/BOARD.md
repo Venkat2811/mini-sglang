@@ -22,6 +22,7 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 
 - Runbook (sanitized + reproducible): `0_venkat-worklog/RUNBOOK.md`
 - Recorded run results: `0_venkat-worklog/baselines/2026-02-14-rtx3060-qwen2.5-0.5b.md`
+- Tokenizer backend A/B: `0_venkat-worklog/baselines/2026-02-14-tokenizer-backend-ab.md`
 - Tokenizer research note: `0_venkat-worklog/research/2026-02-14-rust-tokenizer-landscape.md`
 
 ## Privacy Guardrails (Public Repo)

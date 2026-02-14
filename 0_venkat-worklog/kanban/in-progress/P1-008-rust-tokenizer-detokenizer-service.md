@@ -48,6 +48,13 @@ Move tokenizer/detokenizer worker path from Python process to Rust service imple
   - CJK/printable-text heuristics
   - Unicode-safe char-offset slicing for incremental chunks.
 - Added `HfTokenizerBackend` using `llm-tokenizer` (same tokenizer stack reused by `sgl-model-gateway`).
+- Added Python runtime integration path (feature-flagged) in `minisgl.tokenizer.server`:
+  - `MINISGL_TOKENIZER_BACKEND=python` (default)
+  - `MINISGL_TOKENIZER_BACKEND=rust_inprocess`
+  - `MINISGL_TOKENIZER_BACKEND=rust_tokenize_only`
+- Added PyO3 class `TokenizerWorker` in `rust/minisgl-cpu-py` and Python adapter `minisgl.tokenizer.rust_backend`.
+- Added unit tests for Python adapter marshaling:
+  - `tests/misc/test_tokenizer_rust_backend.py`
 - TDD evidence in this cycle:
   - red: `cargo test -p minisgl-cpu-tokenizer` failed on unimplemented tokenize/detokenize managers.
   - green: same tests pass after implementation.
@@ -57,3 +64,9 @@ Move tokenizer/detokenizer worker path from Python process to Rust service imple
   - `cargo clippy -p minisgl-cpu-tokenizer --all-targets -- -D warnings`
   - `cargo test --workspace`
   - `cargo clippy --workspace --all-targets -- -D warnings`
+  - `pytest tests/misc/test_tokenizer_rust_backend.py`
+- Runtime A/B snapshot (tokenizer-heavy online profile):
+  - python backend: `927.63 tok/s`
+  - rust_inprocess backend: `884.22 tok/s` (`-4.68%`)
+  - rust_tokenize_only backend: `887.31 tok/s` (`-4.35%`)
+  - details: `0_venkat-worklog/baselines/2026-02-14-tokenizer-backend-ab.md`
