@@ -53,6 +53,7 @@ EnvFloat = partial(EnvVar[float], fn=float)
 EnvBool = partial(EnvVar[bool], fn=_TO_BOOL)
 EnvOption = partial(EnvVar[bool | None], fn=_TO_BOOL, default_value=None)
 EnvMem = partial(EnvVar[int], fn=_PARSE_MEM_BYTES)
+EnvStr = partial(EnvVar[str], fn=lambda x: x)
 
 
 class EnvClassSingleton:
@@ -70,6 +71,9 @@ class EnvClassSingleton:
     OVERLAP_EXTRA_SYNC = EnvBool(False)
     PYNCCL_MAX_BUFFER_SIZE = EnvMem(1024**3)
     CPU_BACKEND = EnvVar("python", fn=lambda x: x.strip().lower())
+    CPU_BACKEND_SHADOW = EnvBool(False)
+    CPU_BACKEND_SHADOW_REPORT = EnvStr("")
+    CPU_BACKEND_SHADOW_MAX_DIFFS = EnvInt(128)
 
     def __new__(cls):
         # single instance

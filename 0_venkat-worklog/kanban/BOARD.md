@@ -11,8 +11,9 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 
 ## Latest A/B Snapshot (Python vs Rust CPU backend)
 
-- Offline: near parity (latest run delta `-0.02%`).
-- Online: Rust backend ahead (latest run delta `+1.50%` throughput).
+- Offline: Rust backend slightly ahead (latest run delta `+0.07%`).
+- Online: Rust backend ahead (latest run delta `+0.69%` throughput).
+- Shadow parity check (offline deterministic profile): `0` divergences logged.
 - Details recorded in `baselines/2026-02-14-rtx3060-qwen2.5-0.5b.md`.
 
 ## Baseline Documentation
@@ -37,7 +38,7 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 ## Priority Order (Execution Sequence)
 
 1. `in-progress/P0-004-rust-prefill-admission-and-batch-mapping.md`
-2. `todo/P0-006-shadow-mode-and-parity-corpus.md`
+2. `in-progress/P0-006-shadow-mode-and-parity-corpus.md`
 3. `todo/P1-007-rust-gateway-skeleton-axum.md`
 4. `todo/P1-008-rust-tokenizer-detokenizer-service.md`
 5. `todo/P1-009-typed-transport-migration.md`

@@ -163,3 +163,46 @@ Terminal 1: stop server with `Ctrl+C`.
 - Record only relative paths and sanitized host addresses.
 - Never commit secrets, user/home paths, or personal identifiers.
 - Keep benchmark logs in `kanban/baselines/` with timestamp + model name.
+
+## 6. CPU Shadow Mode (Parity Diagnostics)
+
+Run with one backend as primary and the other in shadow for metadata decision comparison.
+
+Terminal 1: start server with shadow mode enabled
+
+```bash
+cd mini-sglang
+source .venv/bin/activate
+MINISGL_CPU_BACKEND=rust_hotpath \
+MINISGL_CPU_BACKEND_SHADOW=1 \
+MINISGL_CPU_BACKEND_SHADOW_REPORT=0_venkat-worklog/kanban/baselines/latest-shadow-divergence.jsonl \
+MINISGL_CPU_BACKEND_SHADOW_MAX_DIFFS=256 \
+python -m minisgl \
+  --model-path Qwen/Qwen2.5-0.5B-Instruct \
+  --host 127.0.0.1 \
+  --port 1919 \
+  --cuda-graph-max-bs 16 \
+  --memory-ratio 0.8 \
+  --max-running-requests 64
+```
+
+Terminal 2: drive traffic (example: online harness)
+
+```bash
+cd mini-sglang
+source .venv/bin/activate
+python -m minisgl.benchmark.harness online \
+  --base-url http://127.0.0.1:1919 \
+  --out 0_venkat-worklog/kanban/baselines/latest-online-shadow-check.json
+```
+
+Terminal 2: summarize divergence report
+
+```bash
+cd mini-sglang
+source .venv/bin/activate
+python -m minisgl.benchmark.shadow_report \
+  --input 0_venkat-worklog/kanban/baselines/latest-shadow-divergence.jsonl \
+  --top 20 \
+  --allow-missing
+```
