@@ -32,8 +32,8 @@ Create repeatable local baseline runs (offline + online) so every Rust change is
 
 ## Acceptance Criteria
 
-- [ ] Same command on same machine produces comparable metrics (within agreed noise band).
-- [ ] Baseline numbers are saved and referenced by all later cards.
+- [ ] Same command on same machine produces comparable metrics (within agreed noise band). Deferred as low-priority follow-up.
+- [x] Baseline numbers are saved and referenced by all later cards.
 
 ## Notes
 

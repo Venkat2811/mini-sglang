@@ -1,7 +1,7 @@
 # P0-003: Rust Radix Cache Equivalence
 
 Priority: P0  
-Status: todo  
+Status: in-progress  
 Depends on: P0-002
 
 ## Objective

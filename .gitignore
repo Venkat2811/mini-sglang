@@ -15,10 +15,20 @@ __pycache__/
 *.nsys-rep
 *.ncu-rep
 
+# local test/coverage artifacts
+.coverage
+htmlcov/
+
 # binaries
 build/
 dist/
 *.tar.gz
+
+# rust build artifacts
+rust/target/
+rust/minisgl-cpu-py/src/minisgl_cpu/*.so
+rust/minisgl-cpu-py/src/minisgl_cpu/*.pyd
+rust/minisgl-cpu-py/src/minisgl_cpu/*.dylib
 
 # virtual environment
 .venv/

@@ -1,0 +1,16 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "minisgl-cpu"
+version = "0.1.0"
+description = "Rust CPU-side scaffolding for Mini-SGLang"
+requires-python = ">=3.12"
+readme = "README.md"
+license = { text = "MIT" }
+dependencies = []
+
+[tool.maturin]
+python-source = "src"
+module-name = "minisgl_cpu.mini_sgl_cpu_rs"

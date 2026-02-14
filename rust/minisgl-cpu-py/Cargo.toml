@@ -1,0 +1,13 @@
+[package]
+name = "minisgl-cpu-py"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "mini_sgl_cpu_rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3.workspace = true
+minisgl-cpu-core = { path = "../minisgl-cpu-core" }
