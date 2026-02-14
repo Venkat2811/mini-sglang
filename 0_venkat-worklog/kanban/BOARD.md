@@ -22,6 +22,7 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 
 - Runbook (sanitized + reproducible): `0_venkat-worklog/RUNBOOK.md`
 - Recorded run results: `0_venkat-worklog/baselines/2026-02-14-rtx3060-qwen2.5-0.5b.md`
+- Tokenizer research note: `0_venkat-worklog/research/2026-02-14-rust-tokenizer-landscape.md`
 
 ## Privacy Guardrails (Public Repo)
 
@@ -39,7 +40,7 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 
 ## Priority Order (Execution Sequence)
 
-1. `todo/P1-008-rust-tokenizer-detokenizer-service.md`
+1. `in-progress/P1-008-rust-tokenizer-detokenizer-service.md`
 2. `todo/P1-009-typed-transport-migration.md`
 3. `todo/P1-010-observability-and-release-gates.md`
 4. `todo/P1-011-rust-cpu-service-cutover-no-inprocess-ffi.md`

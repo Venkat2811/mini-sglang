@@ -35,7 +35,8 @@ impl GatewayConfig {
             .and_then(|s| s.parse().ok())
             .unwrap_or_else(|| SocketAddr::from(([127, 0, 0, 1], 3030)));
         let model_id = Arc::<str>::from(
-            env::var("MINISGL_GATEWAY_MODEL_ID").unwrap_or_else(|_| "mini-sgl-placeholder".to_string()),
+            env::var("MINISGL_GATEWAY_MODEL_ID")
+                .unwrap_or_else(|_| "mini-sgl-placeholder".to_string()),
         );
         let workers = env::var("MINISGL_GATEWAY_WORKERS")
             .map(|s| Self::parse_workers(&s))
@@ -237,7 +238,8 @@ async fn chat_completions(State(state): State<GatewayState>, Json(body): Json<Va
         let url = worker_chat_url(worker);
         match state.http_client.post(&url).json(&body).send().await {
             Ok(resp) => {
-                let status = StatusCode::from_u16(resp.status().as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
+                let status =
+                    StatusCode::from_u16(resp.status().as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
                 let content_type = resp
                     .headers()
                     .get(reqwest::header::CONTENT_TYPE)
@@ -318,10 +320,15 @@ mod tests {
             StatusCode::SERVICE_UNAVAILABLE
         };
         let app = Router::new()
-            .route("/healthz", get(move || async move { (health_status, "ok") }))
+            .route(
+                "/healthz",
+                get(move || async move { (health_status, "ok") }),
+            )
             .route(
                 "/v1/chat/completions",
-                post(|| async { Json(json!({ "id": "mock", "object": "chat.completion", "choices": [] })) }),
+                post(|| async {
+                    Json(json!({ "id": "mock", "object": "chat.completion", "choices": [] }))
+                }),
             );
         let listener = tokio::net::TcpListener::bind(SocketAddr::from(([127, 0, 0, 1], 0)))
             .await
@@ -359,7 +366,12 @@ mod tests {
     async fn liveness_endpoint_returns_ok() {
         let app = build_app(test_state(vec![]));
         let response = app
-            .oneshot(Request::builder().uri("/liveness").body(Body::empty()).expect("request"))
+            .oneshot(
+                Request::builder()
+                    .uri("/liveness")
+                    .body(Body::empty())
+                    .expect("request"),
+            )
             .await
             .expect("response");
         assert_eq!(response.status(), StatusCode::OK);
@@ -369,7 +381,12 @@ mod tests {
     async fn readiness_is_unavailable_when_no_workers_configured() {
         let app = build_app(test_state(vec![]));
         let response = app
-            .oneshot(Request::builder().uri("/readiness").body(Body::empty()).expect("request"))
+            .oneshot(
+                Request::builder()
+                    .uri("/readiness")
+                    .body(Body::empty())
+                    .expect("request"),
+            )
             .await
             .expect("response");
         assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
@@ -380,7 +397,12 @@ mod tests {
         let (worker, handle) = spawn_mock_worker(true).await;
         let app = build_app(test_state(vec![worker]));
         let response = app
-            .oneshot(Request::builder().uri("/readiness").body(Body::empty()).expect("request"))
+            .oneshot(
+                Request::builder()
+                    .uri("/readiness")
+                    .body(Body::empty())
+                    .expect("request"),
+            )
             .await
             .expect("response");
         assert_eq!(response.status(), StatusCode::OK);
@@ -391,7 +413,12 @@ mod tests {
     async fn models_endpoint_returns_model_id() {
         let app = build_app(test_state(vec![]));
         let response = app
-            .oneshot(Request::builder().uri("/v1/models").body(Body::empty()).expect("request"))
+            .oneshot(
+                Request::builder()
+                    .uri("/v1/models")
+                    .body(Body::empty())
+                    .expect("request"),
+            )
             .await
             .expect("response");
         assert_eq!(response.status(), StatusCode::OK);

@@ -3,6 +3,7 @@ members = [
   "minisgl-cpu-core",
   "minisgl-cpu-py",
   "minisgl-cpu-gateway",
+  "minisgl-cpu-tokenizer",
 ]
 resolver = "2"
 

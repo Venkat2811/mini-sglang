@@ -7,6 +7,7 @@ This workspace contains the CPU-side Rust path for Mini-SGLang.
 - `minisgl-cpu-core`: scheduling/cache data model and shared CPU primitives.
 - `minisgl-cpu-py`: PyO3 bindings for Python integration (`minisgl_cpu.mini_sgl_cpu_rs`).
 - `minisgl-cpu-gateway`: placeholder OpenAI-compatible HTTP server scaffold with `axum`.
+- `minisgl-cpu-tokenizer`: Rust tokenizer/detokenizer manager with chat-template aware HF backend.
 
 ## Naming and Versioning
 
