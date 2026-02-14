@@ -26,7 +26,13 @@ impl FakeCache {
         }
     }
 
-    fn with_match(mut self, key: Vec<i32>, handle_id: u64, cached_len: usize, indices: Vec<i32>) -> Self {
+    fn with_match(
+        mut self,
+        key: Vec<i32>,
+        handle_id: u64,
+        cached_len: usize,
+        indices: Vec<i32>,
+    ) -> Self {
         self.matches.insert(
             key,
             CacheMatch {
@@ -47,7 +53,10 @@ impl FakeCache {
 impl PrefillCache for FakeCache {
     type Handle = FakeHandle;
 
-    fn match_req(&mut self, input_ids_without_last: &[i32]) -> Result<CacheMatch<Self::Handle>, String> {
+    fn match_req(
+        &mut self,
+        input_ids_without_last: &[i32],
+    ) -> Result<CacheMatch<Self::Handle>, String> {
         self.matches
             .get(input_ids_without_last)
             .cloned()
@@ -218,7 +227,8 @@ fn mapping_builders_match_python_contracts_for_mixed_batch() {
     assert_eq!(input_mapping, vec![7, 7, 7, 9, 9, 11]);
     assert_eq!(input_positions, positions);
 
-    let (write_req_mapping, write_pos) = make_write_tuple(&[req_a.clone(), req_b.clone(), req_c.clone()]);
+    let (write_req_mapping, write_pos) =
+        make_write_tuple(&[req_a.clone(), req_b.clone(), req_c.clone()]);
     assert_eq!(write_req_mapping, vec![7, 9, 11]);
     assert_eq!(write_pos, vec![5, -1, 5]);
 

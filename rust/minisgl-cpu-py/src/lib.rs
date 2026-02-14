@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use minisgl_cpu_core::{
-    make_input_tuple as core_make_input_tuple, make_positions as core_make_positions,
-    make_write_tuple as core_make_write_tuple, CacheMatch, PendingReq, PrefixCacheManager,
-    PrefillAdder, PrefillCache, PrefillTable, RadixCacheHandle, RadixCacheManager, SamplingParams,
+    make_input_mapping as core_make_input_mapping, make_positions as core_make_positions,
+    make_write_tuple as core_make_write_tuple, CacheMatch, PendingReq, PrefillAdder, PrefillCache,
+    PrefillTable, PrefixCacheManager, RadixCacheHandle, RadixCacheManager, SamplingParams,
     ScheduledReq,
 };
 use pyo3::{
@@ -48,7 +48,10 @@ fn cache_err(err: impl ToString) -> PyErr {
 #[derive(Clone, Debug)]
 struct DummyHandle;
 
-fn make_reqs_for_positions(cached_lens: &[usize], device_lens: &[usize]) -> PyResult<Vec<ScheduledReq<DummyHandle>>> {
+fn make_reqs_for_positions(
+    cached_lens: &[usize],
+    device_lens: &[usize],
+) -> PyResult<Vec<ScheduledReq<DummyHandle>>> {
     if cached_lens.len() != device_lens.len() {
         return Err(PyValueError::new_err(
             "cached_lens and device_lens lengths must match",
@@ -138,8 +141,7 @@ fn make_input_mapping(
     table_idxs: Vec<i32>,
     cached_lens: Vec<usize>,
     device_lens: Vec<usize>,
-    positions: Vec<i32>,
-) -> PyResult<(Vec<i32>, Vec<i32>)> {
+) -> PyResult<Vec<i32>> {
     if table_idxs.len() != cached_lens.len() || cached_lens.len() != device_lens.len() {
         return Err(PyValueError::new_err(
             "table_idxs, cached_lens, and device_lens lengths must match",
@@ -149,15 +151,7 @@ fn make_input_mapping(
     for (req, table_idx) in reqs.iter_mut().zip(table_idxs) {
         req.table_idx = table_idx;
     }
-    let expected_positions: usize = reqs.iter().map(ScheduledReq::extend_len).sum();
-    if positions.len() != expected_positions {
-        return Err(PyValueError::new_err(format!(
-            "positions length {} != expected {}",
-            positions.len(),
-            expected_positions
-        )));
-    }
-    Ok(core_make_input_tuple(&reqs, &positions))
+    Ok(core_make_input_mapping(&reqs))
 }
 
 #[pyfunction]
@@ -201,7 +195,10 @@ struct FakePrefillCache {
 impl PrefillCache for FakePrefillCache {
     type Handle = PrefillHandle;
 
-    fn match_req(&mut self, _input_ids_without_last: &[i32]) -> Result<CacheMatch<Self::Handle>, String> {
+    fn match_req(
+        &mut self,
+        _input_ids_without_last: &[i32],
+    ) -> Result<CacheMatch<Self::Handle>, String> {
         Ok(CacheMatch {
             handle: PrefillHandle,
             cached_len: self.cached_len,

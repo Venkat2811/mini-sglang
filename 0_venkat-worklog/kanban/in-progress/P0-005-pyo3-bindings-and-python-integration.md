@@ -34,6 +34,7 @@ Integrate Rust hot path into current Python runtime with feature flags and safe 
 - [x] Implement bindings and scheduler plumbing to pass tests.
 
 3. Refactor
+- [x] Remove avoidable `positions` round-trip (`Tensor -> list -> Rust -> list -> Tensor`) in Rust path.
 - [ ] Minimize conversion overhead across Python/Rust boundary.
 - [ ] Standardize type adapters.
 
@@ -61,6 +62,17 @@ Integrate Rust hot path into current Python runtime with feature flags and safe 
 - Added tests:
   - `tests/misc/test_cpu_backend.py` (python/rust mode selection + fallback behavior),
   - `rust/minisgl-cpu-py/tests/test_import.py` extended smoke checks for new APIs.
+- Refactor pass to reduce one major boundary inefficiency:
+  - `rust/minisgl-cpu-core/src/prefill.rs` adds `make_input_mapping` (mapping-only helper).
+  - `rust/minisgl-cpu-py/src/lib.rs` updates `make_input_mapping` API to avoid `positions` marshalling.
+  - `python/minisgl/scheduler/cpu_backend.py` now reuses `batch.positions` directly in Rust mode.
+- Fresh A/B evidence after refactor (same local harness profile):
+  - offline delta: `-0.12%` (Rust vs Python),
+  - online delta: `-2.31%` (Rust vs Python),
+  - isolated metadata loop: Python backend still faster (`6547 ops/s` vs Rust backend `1789 ops/s`).
+- Practical takeaway from `sgl-model-gateway` reuse pattern:
+  - efficient model-gateway usage keeps Python at coarse control plane boundary (`Router.from_args(...).start()`),
+  - hot request path runs in Rust process, avoiding per-step Python↔Rust marshalling.
 - Validation:
   - `cargo test --workspace` passed.
   - `cargo clippy --workspace --all-targets -- -D warnings` passed.

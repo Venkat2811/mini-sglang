@@ -1,5 +1,5 @@
-use minisgl_cpu_core::{Batch, CacheManager, NoopCacheManager, Req, SamplingParams, SchedulerPlan};
 use minisgl_cpu_core::types::BatchPhase;
+use minisgl_cpu_core::{Batch, CacheManager, NoopCacheManager, Req, SamplingParams, SchedulerPlan};
 
 #[test]
 fn sampling_params_defaults_match_python_contract() {

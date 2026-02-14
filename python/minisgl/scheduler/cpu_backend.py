@@ -145,13 +145,10 @@ class RustHotpathCpuBackend:
             return self._fallback_input(batch, device)
         try:
             table_idxs, cached_lens, device_lens, _ = self._req_shapes(batch, padded=True)
-            mapping, positions = self.rust_mod.make_input_mapping(
-                table_idxs, cached_lens, device_lens, batch.positions.tolist()
-            )
+            mapping = self.rust_mod.make_input_mapping(table_idxs, cached_lens, device_lens)
             self.stats.rust_calls += 1
             map_host = torch.tensor(mapping, dtype=torch.int32, pin_memory=True)
-            pos_host = torch.tensor(positions, dtype=torch.int32, pin_memory=True)
-            return map_host.to(device, non_blocking=True), pos_host.to(device, non_blocking=True)
+            return map_host.to(device, non_blocking=True), batch.positions
         except Exception as exc:
             logger.warning("Rust make_input_mapping failed; fallback to python: %s", exc)
             return self._fallback_input(batch, device)

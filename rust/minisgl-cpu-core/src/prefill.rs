@@ -69,7 +69,10 @@ pub struct CacheMatch<H> {
 pub trait PrefillCache {
     type Handle: Clone;
 
-    fn match_req(&mut self, input_ids_without_last: &[i32]) -> Result<CacheMatch<Self::Handle>, String>;
+    fn match_req(
+        &mut self,
+        input_ids_without_last: &[i32],
+    ) -> Result<CacheMatch<Self::Handle>, String>;
     fn lock(&mut self, handle: &Self::Handle) -> Result<(), String>;
     fn unlock(&mut self, handle: &Self::Handle) -> Result<(), String>;
     fn available_size(&self) -> usize;
@@ -290,7 +293,7 @@ pub fn make_positions<H>(padded_reqs: &[ScheduledReq<H>]) -> Vec<i32> {
     out
 }
 
-pub fn make_input_tuple<H>(padded_reqs: &[ScheduledReq<H>], positions: &[i32]) -> (Vec<i32>, Vec<i32>) {
+pub fn make_input_mapping<H>(padded_reqs: &[ScheduledReq<H>]) -> Vec<i32> {
     let total: usize = padded_reqs.iter().map(ScheduledReq::extend_len).sum();
     let mut mapping = Vec::with_capacity(total);
     for req in padded_reqs {
@@ -298,14 +301,27 @@ pub fn make_input_tuple<H>(padded_reqs: &[ScheduledReq<H>], positions: &[i32]) -
             mapping.push(req.table_idx);
         }
     }
-    (mapping, positions.to_vec())
+    mapping
+}
+
+pub fn make_input_tuple<H>(
+    padded_reqs: &[ScheduledReq<H>],
+    positions: &[i32],
+) -> (Vec<i32>, Vec<i32>) {
+    (make_input_mapping(padded_reqs), positions.to_vec())
 }
 
 pub fn make_write_tuple<H>(reqs: &[ScheduledReq<H>]) -> (Vec<i32>, Vec<i32>) {
     let req_mapping: Vec<i32> = reqs.iter().map(|req| req.table_idx).collect();
     let write_mapping: Vec<i32> = reqs
         .iter()
-        .map(|req| if req.can_decode() { req.device_len as i32 } else { -1 })
+        .map(|req| {
+            if req.can_decode() {
+                req.device_len as i32
+            } else {
+                -1
+            }
+        })
         .collect();
     (req_mapping, write_mapping)
 }

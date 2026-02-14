@@ -151,10 +151,18 @@ impl RadixCacheManager {
             node_mut.parent = Some(Rc::downgrade(&split_ref));
         }
 
-        let child_edge = node.borrow().key.first().copied().ok_or(CacheError::CorruptedTree {
-            reason: "split child became empty",
-        })?;
-        split_ref.borrow_mut().children.insert(child_edge, node.clone());
+        let child_edge = node
+            .borrow()
+            .key
+            .first()
+            .copied()
+            .ok_or(CacheError::CorruptedTree {
+                reason: "split child became empty",
+            })?;
+        split_ref
+            .borrow_mut()
+            .children
+            .insert(child_edge, node.clone());
 
         Ok(split_ref)
     }
@@ -296,12 +304,11 @@ impl PrefixCacheManager for RadixCacheManager {
                 borrowed.ref_count -= 1;
                 if borrowed.ref_count == 0 {
                     self.evictable_size += borrowed.len();
-                    self.protected_size = self
-                        .protected_size
-                        .checked_sub(borrowed.len())
-                        .ok_or(CacheError::CorruptedTree {
+                    self.protected_size = self.protected_size.checked_sub(borrowed.len()).ok_or(
+                        CacheError::CorruptedTree {
                             reason: "protected_size underflow during unlock",
-                        })?;
+                        },
+                    )?;
                 }
             } else {
                 let mut borrowed = node.borrow_mut();
@@ -336,7 +343,9 @@ impl PrefixCacheManager for RadixCacheManager {
             new_node.parent = Some(Rc::downgrade(&node));
             let new_node_ref = Rc::new(RefCell::new(new_node));
             let edge = input_ids[prefix_len];
-            node.borrow_mut().children.insert(edge, new_node_ref.clone());
+            node.borrow_mut()
+                .children
+                .insert(edge, new_node_ref.clone());
             self.evictable_size += new_node_ref.borrow().len();
         }
 
@@ -471,13 +480,11 @@ impl PrefixCacheManager for RadixCacheManager {
                         reason: "child edge key mismatch",
                     });
                 }
-                let child_parent = child_borrow
-                    .parent
-                    .as_ref()
-                    .and_then(Weak::upgrade)
-                    .ok_or(CacheError::CorruptedTree {
+                let child_parent = child_borrow.parent.as_ref().and_then(Weak::upgrade).ok_or(
+                    CacheError::CorruptedTree {
                         reason: "child parent pointer missing",
-                    })?;
+                    },
+                )?;
                 if !Rc::ptr_eq(&child_parent, &node) {
                     return Err(CacheError::CorruptedTree {
                         reason: "child parent pointer mismatch",

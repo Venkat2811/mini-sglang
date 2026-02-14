@@ -8,9 +8,7 @@ fn exact_prefix_match_returns_expected_indices() {
         .expect("insert must succeed");
     assert_eq!(inserted, 0);
 
-    let (handle, matched) = mgr
-        .match_prefix(&[1, 2, 3, 4])
-        .expect("match must succeed");
+    let (handle, matched) = mgr.match_prefix(&[1, 2, 3, 4]).expect("match must succeed");
     assert_eq!(handle.cached_len, 3);
     assert_eq!(matched, vec![10, 11, 12]);
     mgr.check_integrity().expect("tree must stay valid");
@@ -31,9 +29,7 @@ fn partial_match_splits_node_and_preserves_shared_prefix() {
         .expect("insert split branch");
     assert_eq!(prefix_len, 2);
 
-    let (branch_handle, branch_match) = mgr
-        .match_prefix(&[1, 2, 9, 8])
-        .expect("match new branch");
+    let (branch_handle, branch_match) = mgr.match_prefix(&[1, 2, 9, 8]).expect("match new branch");
     assert_eq!(branch_handle.cached_len, 3);
     assert_eq!(branch_match, vec![10, 11, 22]);
     mgr.check_integrity().expect("tree must stay valid");
@@ -110,7 +106,11 @@ fn size_accounting_stays_consistent_across_operation_sequence() {
     }
 
     let mut locked = Vec::new();
-    for query in [&[5, 1, 2, 3, 6][..], &[5, 9, 8, 2][..], &[7, 7, 7, 1, 0][..]] {
+    for query in [
+        &[5, 1, 2, 3, 6][..],
+        &[5, 9, 8, 2][..],
+        &[7, 7, 7, 1, 0][..],
+    ] {
         let (handle, _) = mgr.match_prefix(query).expect("match");
         mgr.lock_handle(&handle, false).expect("lock");
         locked.push(handle);

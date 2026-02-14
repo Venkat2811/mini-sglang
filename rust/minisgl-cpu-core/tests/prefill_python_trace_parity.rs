@@ -73,7 +73,10 @@ struct FakeCache {
 impl PrefillCache for FakeCache {
     type Handle = Handle;
 
-    fn match_req(&mut self, _input_ids_without_last: &[i32]) -> Result<CacheMatch<Self::Handle>, String> {
+    fn match_req(
+        &mut self,
+        _input_ids_without_last: &[i32],
+    ) -> Result<CacheMatch<Self::Handle>, String> {
         Ok(CacheMatch {
             handle: Handle { id: 1 },
             cached_len: self.cached_len,
@@ -146,7 +149,9 @@ fn replay_python_prefill_adder_cases() {
             table: &mut table,
         };
 
-        let result = adder.try_add_one(&pending).expect("adder case should not error");
+        let result = adder
+            .try_add_one(&pending)
+            .expect("adder case should not error");
         assert_eq!(
             result.is_some(),
             case.expected.admitted,

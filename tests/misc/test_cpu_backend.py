@@ -86,9 +86,9 @@ def test_rust_backend_runtime_error_fallback(monkeypatch):
             raise RuntimeError("forced failure")
 
         @staticmethod
-        def make_input_mapping(table_idxs, cached_lens, device_lens, positions):
+        def make_input_mapping(table_idxs, cached_lens, device_lens):
             _ = cached_lens, device_lens
-            return (table_idxs, positions)
+            return table_idxs
 
         @staticmethod
         def make_write_mapping(table_idxs, device_lens, can_decode):

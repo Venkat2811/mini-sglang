@@ -10,6 +10,8 @@ class RustBindingImportTests(unittest.TestCase):
         self.assertTrue(hasattr(mod, "RadixCacheManager"))
         positions = mod.make_positions([1, 2], [3, 5])
         self.assertEqual(positions, [1, 2, 2, 3, 4])
+        mapping = mod.make_input_mapping([7, 9], [1, 2], [3, 5])
+        self.assertEqual(mapping, [7, 7, 9, 9, 9])
         admitted = mod.prefill_admission_plan(
             token_budget=4,
             reserved_size=0,
