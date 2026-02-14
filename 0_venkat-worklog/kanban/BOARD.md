@@ -14,6 +14,7 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 - Offline: Rust backend slightly ahead (latest run delta `+0.07%`).
 - Online: Rust backend ahead (latest run delta `+0.69%` throughput).
 - Shadow parity check (offline deterministic profile): `0` divergences logged.
+- Deterministic token parity check (`python` vs `rust_hotpath`): passed for both text and token prompt sets.
 - Details recorded in `baselines/2026-02-14-rtx3060-qwen2.5-0.5b.md`.
 
 ## Baseline Documentation
@@ -37,13 +38,12 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 
 ## Priority Order (Execution Sequence)
 
-1. `in-progress/P0-004-rust-prefill-admission-and-batch-mapping.md`
-2. `in-progress/P0-006-shadow-mode-and-parity-corpus.md`
-3. `todo/P1-007-rust-gateway-skeleton-axum.md`
-4. `todo/P1-008-rust-tokenizer-detokenizer-service.md`
-5. `todo/P1-009-typed-transport-migration.md`
-6. `todo/P1-010-observability-and-release-gates.md`
-7. `backlog/BK-001-super-optimized-runtime-track.md`
+1. `in-progress/P0-006-shadow-mode-and-parity-corpus.md`
+2. `todo/P1-007-rust-gateway-skeleton-axum.md`
+3. `todo/P1-008-rust-tokenizer-detokenizer-service.md`
+4. `todo/P1-009-typed-transport-migration.md`
+5. `todo/P1-010-observability-and-release-gates.md`
+6. `backlog/BK-001-super-optimized-runtime-track.md`
 
 ## Definition of Done (Per Card)
 

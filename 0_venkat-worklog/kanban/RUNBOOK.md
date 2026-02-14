@@ -206,3 +206,28 @@ python -m minisgl.benchmark.shadow_report \
   --top 20 \
   --allow-missing
 ```
+
+## 7. Deterministic Token Parity (Python vs Rust CPU backend)
+
+Run deterministic greedy decode on fixed text and synthetic token prompts, then compare exact output token IDs.
+
+```bash
+cd mini-sglang/python
+../.venv/bin/python -m minisgl.benchmark.token_parity \
+  --model-path Qwen/Qwen2.5-0.5B-Instruct \
+  --backend-a python \
+  --backend-b rust_hotpath \
+  --max-tokens 16 \
+  --token-prompt-count 4 \
+  --min-input-len 32 \
+  --max-input-len 64 \
+  --cuda-graph-max-bs 1 \
+  --master-port 2380 \
+  --out ../0_venkat-worklog/kanban/baselines/latest-token-parity.json
+```
+
+Expected output:
+
+- `parity_passed=True`
+- `text_prompts` mismatch count: `0`
+- `token_prompts` mismatch count: `0`

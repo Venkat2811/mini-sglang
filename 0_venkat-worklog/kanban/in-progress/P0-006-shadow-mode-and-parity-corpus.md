@@ -25,7 +25,7 @@ Establish parity confidence before broader rollout by running Rust decisions in 
 
 1. Red
 - [x] Create failing tests with intentionally diverged fixtures to validate diff detection.
-- [ ] Add failing test for deterministic token equality under greedy decode.
+- [x] Add failing test for deterministic token equality under greedy decode.
 
 2. Green
 - [x] Implement shadow comparator and reporting.
@@ -66,3 +66,8 @@ Establish parity confidence before broader rollout by running Rust decisions in 
     - `MINISGL_CPU_BACKEND=rust_hotpath MINISGL_CPU_BACKEND_SHADOW=1 ... python -m minisgl.benchmark.harness offline ...`
     - `python -m minisgl.benchmark.shadow_report --allow-missing ...`
     - observed: `divergence_entries=0`.
+- Added deterministic token parity CLI + tests:
+  - tool: `python/minisgl/benchmark/token_parity.py`
+  - tests: `tests/misc/test_token_parity.py`
+  - run artifact: `0_venkat-worklog/kanban/baselines/latest-token-parity.json`
+  - observed: `parity_passed=True` (`text_prompts` and `token_prompts` both zero mismatches).
