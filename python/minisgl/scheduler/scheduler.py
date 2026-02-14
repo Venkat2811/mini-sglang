@@ -18,6 +18,12 @@ from transformers import AutoTokenizer
 
 from .cache import CacheManager
 from .config import SchedulerConfig
+from .cpu_backend import (
+    _make_input_tuple_python,
+    _make_positions_python,
+    _make_write_tuple_python,
+    create_cpu_backend,
+)
 from .decode import DecodeManager
 from .io import SchedulerIOMixin
 from .prefill import ChunkedReq, PrefillManager
@@ -73,6 +79,9 @@ class Scheduler(SchedulerIOMixin):
         self.page_table = self.engine.page_table
         self.token_pool = self.table_manager.token_pool
         self.prefill_budget = config.max_extend_tokens
+        self.cpu_backend = create_cpu_backend(str(ENV.CPU_BACKEND))
+        self._last_backend_stats: dict[str, int | str] | None = None
+        logger.info_rank0("CPU backend selected: %s", self.cpu_backend.name)
 
     def _process_last_data(
         self, last_data: ForwardData | None, ongoing_data: ForwardData | None
@@ -147,9 +156,9 @@ class Scheduler(SchedulerIOMixin):
         if padding_size := self.engine.graph_runner.pad_batch(batch):
             out_loc = F.pad(out_loc, (0, padding_size), value=self.engine.dummy_page)
         batch.out_loc = out_loc
-        batch.positions = _make_positions(batch, self.device)
-        input_mapping = _make_input_tuple(batch, self.device)
-        write_mapping = _make_write_tuple(batch, self.device)
+        batch.positions = self.cpu_backend.make_positions(batch, self.device)
+        input_mapping = self.cpu_backend.make_input_tuple(batch, self.device)
+        write_mapping = self.cpu_backend.make_write_tuple(batch, self.device)
 
         assert all(r.device_len < self.engine.max_seq_len for r in batch.reqs)
         # NOTE: write out_loc to page_table before `prepare_metadata`
@@ -184,6 +193,10 @@ class Scheduler(SchedulerIOMixin):
         """Called when the scheduler is idle to perform background tasks."""
         logger.info_rank0("Scheduler is idle, waiting for new reqs...")
         self.cache_manager.check_integrity()
+        stats = self.cpu_backend.snapshot()
+        if stats != self._last_backend_stats:
+            logger.info_rank0("CPU backend stats: %s", stats)
+            self._last_backend_stats = stats.copy()
 
     def overlap_loop(self, last_data: ForwardData | None) -> ForwardData | None:
         """
@@ -242,33 +255,12 @@ class Scheduler(SchedulerIOMixin):
 
 
 def _make_positions(batch: Batch, device: torch.device) -> torch.Tensor:
-    indices_host = torch.empty(len(batch.out_loc), dtype=torch.int32, pin_memory=True)
-    offset = 0
-    for req in batch.padded_reqs:
-        length = req.extend_len
-        torch.arange(
-            req.cached_len,
-            req.device_len,
-            dtype=torch.int32,
-            out=indices_host[offset : offset + length],
-        )
-        offset += length
-    return indices_host.to(device, non_blocking=True)
+    return _make_positions_python(batch, device)
 
 
 def _make_input_tuple(batch: Batch, device: torch.device) -> Indice2D:
-    mapping_host = torch.empty(len(batch.out_loc), dtype=torch.int32, pin_memory=True)
-    offset = 0
-    for req in batch.padded_reqs:
-        length = req.extend_len
-        mapping_host[offset : offset + length].fill_(req.table_idx)
-        offset += length
-    return mapping_host.to(device, non_blocking=True), batch.positions
+    return _make_input_tuple_python(batch, device)
 
 
 def _make_write_tuple(batch: Batch, device: torch.device) -> Indice2D:
-    mapping_list = [req.table_idx for req in batch.reqs]
-    mapping_host = torch.tensor(mapping_list, dtype=torch.int32, pin_memory=True)
-    write_list = [(req.device_len if req.can_decode else -1) for req in batch.reqs]
-    write_host = torch.tensor(write_list, dtype=torch.int32, pin_memory=True)
-    return mapping_host.to(device, non_blocking=True), write_host.to(device, non_blocking=True)
+    return _make_write_tuple_python(batch, device)

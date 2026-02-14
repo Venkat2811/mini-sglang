@@ -31,7 +31,7 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 ## Priority Order (Execution Sequence)
 
 1. `in-progress/P0-004-rust-prefill-admission-and-batch-mapping.md`
-2. `todo/P0-005-pyo3-bindings-and-python-integration.md`
+2. `in-progress/P0-005-pyo3-bindings-and-python-integration.md`
 3. `todo/P0-006-shadow-mode-and-parity-corpus.md`
 4. `todo/P1-007-rust-gateway-skeleton-axum.md`
 5. `todo/P1-008-rust-tokenizer-detokenizer-service.md`

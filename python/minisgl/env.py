@@ -69,6 +69,7 @@ class EnvClassSingleton:
     DISABLE_OVERLAP_SCHEDULING = EnvBool(False)
     OVERLAP_EXTRA_SYNC = EnvBool(False)
     PYNCCL_MAX_BUFFER_SIZE = EnvMem(1024**3)
+    CPU_BACKEND = EnvVar("python", fn=lambda x: x.strip().lower())
 
     def __new__(cls):
         # single instance

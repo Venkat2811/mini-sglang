@@ -1,0 +1,69 @@
+# P0-005: PyO3 Bindings and Python Scheduler Integration
+
+Priority: P0  
+Status: in-progress  
+Depends on: P0-004
+
+## Objective
+
+Integrate Rust hot path into current Python runtime with feature flags and safe rollback.
+
+## Reuse Targets (from sgl-model-gateway)
+
+- PyO3 class/exposed API style from `bindings/python/src/lib.rs`.
+- Maturin packaging + Python src layout conventions.
+
+## Checklist
+
+- [ ] Expose Rust APIs for:
+  - [x] radix manager calls
+  - [x] prefill admission
+  - [x] mapping builders
+- [ ] Add runtime flag:
+  - [x] `MINISGL_CPU_BACKEND=python|rust_hotpath`
+- [x] Add fallback path on Rust errors (fail closed to Python path).
+- [x] Add integration telemetry counters for backend path usage.
+
+## TDD Subtasks
+
+1. Red
+- [x] Add failing Python integration tests for both backend modes.
+- [x] Add failing tests for fallback behavior when Rust API raises error.
+
+2. Green
+- [x] Implement bindings and scheduler plumbing to pass tests.
+
+3. Refactor
+- [ ] Minimize conversion overhead across Python/Rust boundary.
+- [ ] Standardize type adapters.
+
+## Acceptance Criteria
+
+- [ ] Functional parity in both modes.
+- [ ] Rust mode delivers measurable gain vs Python mode on baseline workload.
+- [ ] Rollback via env var confirmed.
+
+## Progress Notes (2026-02-14)
+
+- Added scheduler CPU backend selector and telemetry:
+  - `python/minisgl/scheduler/cpu_backend.py`
+  - `python/minisgl/env.py` adds `MINISGL_CPU_BACKEND` handling.
+  - `python/minisgl/scheduler/scheduler.py` now uses backend adapter for mapping builders.
+- Implemented fallback behavior:
+  - rust backend path falls back to python for missing module/import/runtime errors.
+  - fallback counters are tracked in `CpuBackendStats`.
+- Exposed PyO3 APIs in `rust/minisgl-cpu-py/src/lib.rs`:
+  - `RadixCacheManager` class (`insert_prefix`, `match_prefix`, `lock_handle`, `evict`, `size_info`, `check_integrity`),
+  - `prefill_admission_plan`,
+  - `make_positions`, `make_input_mapping`, `make_write_mapping`.
+- Updated Python package exports:
+  - `rust/minisgl-cpu-py/src/minisgl_cpu/__init__.py`.
+- Added tests:
+  - `tests/misc/test_cpu_backend.py` (python/rust mode selection + fallback behavior),
+  - `rust/minisgl-cpu-py/tests/test_import.py` extended smoke checks for new APIs.
+- Validation:
+  - `cargo test --workspace` passed.
+  - `cargo clippy --workspace --all-targets -- -D warnings` passed.
+  - `.venv` + `uvx maturin develop --manifest-path rust/minisgl-cpu-py/Cargo.toml` passed.
+  - `.venv/bin/python -m unittest discover -s rust/minisgl-cpu-py/tests -p 'test_*.py' -v` passed.
+  - `.venv/bin/python -m pytest tests/misc/test_cpu_backend.py -q` passed.
