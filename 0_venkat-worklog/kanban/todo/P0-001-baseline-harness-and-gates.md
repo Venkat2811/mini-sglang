@@ -40,3 +40,6 @@ Create repeatable local baseline runs (offline + online) so every Rust change is
 - Use current local results as initial anchor:
   - offline ~2647 tok/s
   - online ~420 tok/s
+- Existing documented runbook and snapshot:
+  - `../RUNBOOK.md`
+  - `../baselines/2026-02-14-rtx3060-qwen2.5-0.5b.md`

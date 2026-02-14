@@ -1,7 +1,6 @@
 # Rust Minisgl Kanban Board
 
 Last updated: 2026-02-14
-Owner: venkat
 Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then performance.
 
 ## Baseline Snapshot (Local RTX 3060)
@@ -9,6 +8,18 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 - Offline (`LLM` path): ~2647 output tok/s in 16-request small-batch run.
 - Online (`/v1/chat/completions`): ~420 tok/s, TTFT ~959 ms, TPOT ~4.37 ms in 8-request run.
 - Goal: beat these numbers while preserving behavior.
+
+## Baseline Documentation
+
+- Runbook (sanitized + reproducible): `RUNBOOK.md`
+- Recorded run results: `baselines/2026-02-14-rtx3060-qwen2.5-0.5b.md`
+
+## Privacy Guardrails (Public Repo)
+
+- Do not commit absolute local filesystem paths.
+- Do not commit usernames, hostnames, API keys, tokens, or private endpoints.
+- Use generic loopback addresses for local tests (`127.0.0.1`).
+- Keep machine identifiers limited to non-sensitive hardware/software versions only.
 
 ## Lanes
 
