@@ -269,14 +269,18 @@ class ShadowCpuBackend:
         shadow: PythonCpuBackend | RustHotpathCpuBackend,
         report_path: str = "",
         max_diffs: int = 128,
+        compare_every_n: int = 1,
     ):
         self.primary = primary
         self.shadow = shadow
         self.report_path = Path(report_path) if report_path else None
         self.max_diffs = max_diffs
+        self.compare_every_n = max(1, compare_every_n)
         self.shadow_compares = 0
         self.shadow_divergences = 0
         self.shadow_logged = 0
+        self.shadow_samples_skipped = 0
+        self._shadow_call_count = 0
 
     @staticmethod
     def _req_ids(batch: Batch) -> list[int]:
@@ -330,8 +334,19 @@ class ShadowCpuBackend:
         if reason is not None:
             self._record_divergence(kind, batch, reason)
 
+    def _should_compare(self) -> bool:
+        self._shadow_call_count += 1
+        if self.compare_every_n <= 1:
+            return True
+        if self._shadow_call_count % self.compare_every_n == 0:
+            return True
+        self.shadow_samples_skipped += 1
+        return False
+
     def make_positions(self, batch: Batch, device: torch.device) -> torch.Tensor:
         primary = self.primary.make_positions(batch, device)
+        if not self._should_compare():
+            return primary
         try:
             shadow = self.shadow.make_positions(batch, device)
             self._compare("positions", batch, primary, shadow)
@@ -341,6 +356,8 @@ class ShadowCpuBackend:
 
     def make_input_tuple(self, batch: Batch, device: torch.device) -> Tuple[torch.Tensor, torch.Tensor]:
         primary_mapping, primary_positions = self.primary.make_input_tuple(batch, device)
+        if not self._should_compare():
+            return primary_mapping, primary_positions
         try:
             shadow_mapping, shadow_positions = self.shadow.make_input_tuple(batch, device)
             self._compare("input_mapping", batch, primary_mapping, shadow_mapping)
@@ -351,6 +368,8 @@ class ShadowCpuBackend:
 
     def make_write_tuple(self, batch: Batch, device: torch.device) -> Tuple[torch.Tensor, torch.Tensor]:
         primary_req, primary_write = self.primary.make_write_tuple(batch, device)
+        if not self._should_compare():
+            return primary_req, primary_write
         try:
             shadow_req, shadow_write = self.shadow.make_write_tuple(batch, device)
             self._compare("write_req_mapping", batch, primary_req, shadow_req)
@@ -371,6 +390,8 @@ class ShadowCpuBackend:
             "shadow_compares": self.shadow_compares,
             "shadow_divergences": self.shadow_divergences,
             "shadow_logged": self.shadow_logged,
+            "shadow_compare_every_n": self.compare_every_n,
+            "shadow_samples_skipped": self.shadow_samples_skipped,
         }
         stats.update(self._prefixed_stats("primary", self.primary.snapshot()))
         stats.update(self._prefixed_stats("shadow", self.shadow.snapshot()))
@@ -394,16 +415,19 @@ def create_cpu_backend(mode: str):
     shadow = _create_backend_unwrapped(shadow_mode)
     report_path = str(ENV.CPU_BACKEND_SHADOW_REPORT).strip()
     max_diffs = ENV.CPU_BACKEND_SHADOW_MAX_DIFFS.value
+    compare_every_n = ENV.CPU_BACKEND_SHADOW_EVERY_N.value
     logger.info(
-        "CPU backend shadow mode enabled: primary=%s shadow=%s report_path=%s max_diffs=%d",
+        "CPU backend shadow mode enabled: primary=%s shadow=%s report_path=%s max_diffs=%d compare_every_n=%d",
         primary.name,
         shadow.name,
         report_path or "<disabled>",
         max_diffs,
+        compare_every_n,
     )
     return ShadowCpuBackend(
         primary=primary,
         shadow=shadow,
         report_path=report_path,
         max_diffs=max_diffs,
+        compare_every_n=compare_every_n,
     )

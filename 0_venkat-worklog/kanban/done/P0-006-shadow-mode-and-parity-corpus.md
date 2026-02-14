@@ -1,7 +1,7 @@
 # P0-006: Shadow Mode and Parity Corpus
 
 Priority: P0  
-Status: in-progress  
+Status: done  
 Depends on: P0-005
 
 ## Objective
@@ -10,12 +10,12 @@ Establish parity confidence before broader rollout by running Rust decisions in 
 
 ## Checklist
 
-- [ ] Build parity corpus:
-  - [ ] short prompts
-  - [ ] long prompts
-  - [ ] shared-prefix heavy workloads
-  - [ ] mixed sampling params
-- [ ] Implement shadow mode that:
+- [x] Build parity corpus:
+  - [x] short prompts
+  - [x] long prompts
+  - [x] shared-prefix heavy workloads
+  - [x] mixed sampling params
+- [x] Implement shadow mode that:
   - [x] computes decisions in both paths
   - [x] serves production path from selected backend
   - [x] logs diffs with request IDs
@@ -31,12 +31,12 @@ Establish parity confidence before broader rollout by running Rust decisions in 
 - [x] Implement shadow comparator and reporting.
 
 3. Refactor
-- [ ] Reduce shadow overhead for continuous CI runs.
+- [x] Reduce shadow overhead for continuous CI runs.
 
 ## Acceptance Criteria
 
-- [ ] Zero divergence on deterministic corpus.
-- [ ] Documented known/allowed differences for stochastic settings.
+- [x] Zero divergence on deterministic corpus.
+- [x] Documented known/allowed differences for stochastic settings.
 
 ## Progress Notes (2026-02-14)
 
@@ -44,6 +44,7 @@ Establish parity confidence before broader rollout by running Rust decisions in 
   - `MINISGL_CPU_BACKEND_SHADOW`
   - `MINISGL_CPU_BACKEND_SHADOW_REPORT`
   - `MINISGL_CPU_BACKEND_SHADOW_MAX_DIFFS`
+  - `MINISGL_CPU_BACKEND_SHADOW_EVERY_N` (sample shadow checks every N metadata calls)
 - Added shadow comparator backend in `python/minisgl/scheduler/cpu_backend.py`:
   - wraps primary backend (python/rust) and shadow backend (opposite path),
   - compares `positions`, `input_tuple`, `write_tuple` tensors,
@@ -57,7 +58,8 @@ Establish parity confidence before broader rollout by running Rust decisions in 
   - `tests/misc/test_cpu_backend_shadow.py`:
     - divergence detection/report entry,
     - shadow exception handling,
-    - `create_cpu_backend` shadow wiring.
+    - `create_cpu_backend` shadow wiring,
+    - compare-sampling (`compare_every_n`) behavior.
   - `tests/misc/test_shadow_report.py`:
     - JSONL summary command behavior.
 - Validation:
@@ -69,5 +71,15 @@ Establish parity confidence before broader rollout by running Rust decisions in 
 - Added deterministic token parity CLI + tests:
   - tool: `python/minisgl/benchmark/token_parity.py`
   - tests: `tests/misc/test_token_parity.py`
-  - run artifact: `0_venkat-worklog/baselines/latest-token-parity.json`
-  - observed: `parity_passed=True` (`text_prompts` and `token_prompts` both zero mismatches).
+  - run artifacts:
+    - `0_venkat-worklog/baselines/latest-token-parity-short.json`
+    - `0_venkat-worklog/baselines/latest-token-parity-long.json`
+    - `0_venkat-worklog/baselines/latest-token-parity-shared-prefix.json`
+  - observed: all `parity_passed=True` (`text_prompts` and `token_prompts` both zero mismatches).
+- Added corpus note:
+  - `0_venkat-worklog/baselines/2026-02-14-shadow-parity-corpus.md`
+  - includes known/allowed differences guidance for stochastic decoding.
+- Validation updates:
+  - `.venv/bin/python -m pytest tests/misc/test_cpu_backend_shadow.py tests/misc/test_token_parity.py tests/misc/test_shadow_report.py -q` passed.
+  - deterministic shadow run (`MINISGL_CPU_BACKEND_SHADOW=1`, `MINISGL_CPU_BACKEND_SHADOW_EVERY_N=1`) observed: `divergence_entries=0`.
+  - mixed-sampling shadow run observed: `divergence_entries=0`.

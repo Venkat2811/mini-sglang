@@ -74,6 +74,7 @@ class EnvClassSingleton:
     CPU_BACKEND_SHADOW = EnvBool(False)
     CPU_BACKEND_SHADOW_REPORT = EnvStr("")
     CPU_BACKEND_SHADOW_MAX_DIFFS = EnvInt(128)
+    CPU_BACKEND_SHADOW_EVERY_N = EnvInt(1)
 
     def __new__(cls):
         # single instance

@@ -17,6 +17,7 @@ def _args() -> argparse.Namespace:
         token_prompt_count=2,
         min_input_len=4,
         max_input_len=4,
+        shared_prefix_len=0,
         max_seq_len_override=512,
         max_extend_tokens=1024,
         cuda_graph_max_bs=1,
@@ -118,3 +119,34 @@ def test_run_reports_mismatch_when_backends_diverge(monkeypatch):
     assert token_set["match"] is False
     assert token_set["mismatch_count"] == 1
     assert token_set["first_mismatch"]["index"] == 1
+
+
+def test_run_builds_shared_prefix_prompts(monkeypatch):
+    seen_prompts: list[list[list[int]]] = []
+
+    def _fake_run_backend(
+        backend: str,
+        text_prompts: list[str],
+        token_prompts: list[list[int]],
+        args: argparse.Namespace,
+        master_port: int,
+    ):
+        _ = backend, text_prompts, args, master_port
+        seen_prompts.append(token_prompts)
+        return [[1], [2]], 0.01, [[3], [4]], 0.01
+
+    args = _args()
+    args.token_prompt_count = 3
+    args.min_input_len = 8
+    args.max_input_len = 8
+    args.shared_prefix_len = 4
+    monkeypatch.setattr(token_parity, "_run_backend", _fake_run_backend)
+
+    payload = token_parity.run(args)
+    assert payload["parity_passed"] is True
+    assert len(seen_prompts) == 2
+    token_prompts = seen_prompts[0]
+    assert len(token_prompts) == 3
+    first_prefix = token_prompts[0][:4]
+    assert token_prompts[1][:4] == first_prefix
+    assert token_prompts[2][:4] == first_prefix

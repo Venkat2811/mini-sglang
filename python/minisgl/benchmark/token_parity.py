@@ -207,9 +207,17 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     ]
 
     token_prompts: list[list[int]] = []
+    shared_prefix: list[int] = []
+    if args.shared_prefix_len > 0:
+        shared_prefix = [rng.randint(100, 20000) for _ in range(args.shared_prefix_len)]
     for _ in range(args.token_prompt_count):
         in_len = rng.randint(args.min_input_len, args.max_input_len)
-        token_prompts.append([rng.randint(100, 20000) for _ in range(in_len)])
+        if shared_prefix:
+            suffix_len = max(0, in_len - len(shared_prefix))
+            suffix = [rng.randint(100, 20000) for _ in range(suffix_len)]
+            token_prompts.append(shared_prefix + suffix)
+        else:
+            token_prompts.append([rng.randint(100, 20000) for _ in range(in_len)])
     text_a, text_a_dur, token_a, token_a_dur = _run_backend(
         args.backend_a, text_prompts, token_prompts, args, master_port=args.master_port
     )
@@ -250,6 +258,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "token_prompt_count": args.token_prompt_count,
             "min_input_len": args.min_input_len,
             "max_input_len": args.max_input_len,
+            "shared_prefix_len": args.shared_prefix_len,
             "max_seq_len_override": args.max_seq_len_override,
             "max_extend_tokens": args.max_extend_tokens,
             "cuda_graph_max_bs": args.cuda_graph_max_bs,
@@ -274,6 +283,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--token-prompt-count", type=int, default=8)
     parser.add_argument("--min-input-len", type=int, default=64)
     parser.add_argument("--max-input-len", type=int, default=256)
+    parser.add_argument("--shared-prefix-len", type=int, default=0)
     parser.add_argument("--max-seq-len-override", type=int, default=2048)
     parser.add_argument("--max-extend-tokens", type=int, default=4096)
     parser.add_argument("--cuda-graph-max-bs", type=int, default=64)

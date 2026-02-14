@@ -177,6 +177,7 @@ MINISGL_CPU_BACKEND=rust_hotpath \
 MINISGL_CPU_BACKEND_SHADOW=1 \
 MINISGL_CPU_BACKEND_SHADOW_REPORT=0_venkat-worklog/baselines/latest-shadow-divergence.jsonl \
 MINISGL_CPU_BACKEND_SHADOW_MAX_DIFFS=256 \
+MINISGL_CPU_BACKEND_SHADOW_EVERY_N=1 \
 python -m minisgl \
   --model-path Qwen/Qwen2.5-0.5B-Instruct \
   --host 127.0.0.1 \
@@ -221,6 +222,7 @@ cd mini-sglang/python
   --token-prompt-count 4 \
   --min-input-len 32 \
   --max-input-len 64 \
+  --shared-prefix-len 0 \
   --cuda-graph-max-bs 1 \
   --master-port 2380 \
   --out ../0_venkat-worklog/baselines/latest-token-parity.json
@@ -231,3 +233,21 @@ Expected output:
 - `parity_passed=True`
 - `text_prompts` mismatch count: `0`
 - `token_prompts` mismatch count: `0`
+
+Shared-prefix corpus example:
+
+```bash
+cd mini-sglang/python
+../.venv/bin/python -m minisgl.benchmark.token_parity \
+  --model-path Qwen/Qwen2.5-0.5B-Instruct \
+  --backend-a python \
+  --backend-b rust_hotpath \
+  --max-tokens 16 \
+  --token-prompt-count 8 \
+  --min-input-len 96 \
+  --max-input-len 128 \
+  --shared-prefix-len 80 \
+  --cuda-graph-max-bs 1 \
+  --master-port 2420 \
+  --out ../0_venkat-worklog/baselines/latest-token-parity-shared-prefix.json
+```

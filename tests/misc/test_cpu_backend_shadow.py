@@ -164,6 +164,7 @@ def test_create_cpu_backend_wraps_shadow_when_enabled(monkeypatch):
     monkeypatch.setattr(cpu_backend.ENV.CPU_BACKEND_SHADOW, "value", True)
     monkeypatch.setattr(cpu_backend.ENV.CPU_BACKEND_SHADOW_REPORT, "value", "")
     monkeypatch.setattr(cpu_backend.ENV.CPU_BACKEND_SHADOW_MAX_DIFFS, "value", 4)
+    monkeypatch.setattr(cpu_backend.ENV.CPU_BACKEND_SHADOW_EVERY_N, "value", 1)
 
     created: list[str] = []
 
@@ -175,3 +176,27 @@ def test_create_cpu_backend_wraps_shadow_when_enabled(monkeypatch):
     backend = cpu_backend.create_cpu_backend("python")
     assert isinstance(backend, cpu_backend.ShadowCpuBackend)
     assert created == ["python", "rust_hotpath"]
+
+
+def test_shadow_backend_compare_every_n_skips_shadow_calls(tmp_path):
+    batch = _make_batch()
+    primary = _baseline_backend("python")
+    shadow = _baseline_backend("rust_hotpath")
+
+    report_path = tmp_path / "shadow.jsonl"
+    backend = cpu_backend.ShadowCpuBackend(
+        primary=primary,
+        shadow=shadow,
+        report_path=str(report_path),
+        max_diffs=16,
+        compare_every_n=3,
+    )
+
+    device = torch.device("cpu")
+    _ = backend.make_positions(batch, device)
+    _ = backend.make_input_tuple(batch, device)
+    _ = backend.make_write_tuple(batch, device)
+
+    stats = backend.snapshot()
+    assert stats["shadow_compares"] == 2
+    assert stats["shadow_samples_skipped"] == 2
