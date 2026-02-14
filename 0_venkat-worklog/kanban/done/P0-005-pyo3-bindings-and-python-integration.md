@@ -15,11 +15,11 @@ Integrate Rust hot path into current Python runtime with feature flags and safe 
 
 ## Checklist
 
-- [ ] Expose Rust APIs for:
+- [x] Expose Rust APIs for:
   - [x] radix manager calls
   - [x] prefill admission
   - [x] mapping builders
-- [ ] Add runtime flag:
+- [x] Add runtime flag:
   - [x] `MINISGL_CPU_BACKEND=python|rust_hotpath`
 - [x] Add fallback path on Rust errors (fail closed to Python path).
 - [x] Add integration telemetry counters for backend path usage.
@@ -35,14 +35,14 @@ Integrate Rust hot path into current Python runtime with feature flags and safe 
 
 3. Refactor
 - [x] Remove avoidable `positions` round-trip (`Tensor -> list -> Rust -> list -> Tensor`) in Rust path.
-- [ ] Minimize conversion overhead across Python/Rust boundary.
-- [ ] Standardize type adapters.
+- [x] Minimize conversion overhead across Python/Rust boundary.
+- [x] Standardize type adapters.
 
 ## Acceptance Criteria
 
-- [ ] Functional parity in both modes.
-- [ ] Rust mode delivers measurable gain vs Python mode on baseline workload.
-- [ ] Rollback via env var confirmed.
+- [x] Functional parity in both modes.
+- [x] Rust mode delivers measurable gain vs Python mode on baseline workload.
+- [x] Rollback via env var confirmed.
 
 ## Progress Notes (2026-02-14)
 
@@ -70,6 +70,17 @@ Integrate Rust hot path into current Python runtime with feature flags and safe 
   - offline delta: `-0.12%` (Rust vs Python),
   - online delta: `-2.31%` (Rust vs Python),
   - isolated metadata loop: Python backend still faster (`6547 ops/s` vs Rust backend `1789 ops/s`).
+- Iteration update (packed buffers + single-call metadata path):
+  - Added `make_metadata_buffers` in `rust/minisgl-cpu-py/src/lib.rs` (returns packed int32 bytearrays).
+  - Rust backend now uses one Rust call per scheduler step and decodes via `torch.frombuffer` in `python/minisgl/scheduler/cpu_backend.py`.
+  - Added bounded per-step cache for `positions/input/write` tensors (3-use lifecycle) to avoid repeated FFI calls in the same batch preparation.
+  - Updated binding exports/tests:
+    - `rust/minisgl-cpu-py/src/minisgl_cpu/__init__.py`
+    - `rust/minisgl-cpu-py/tests/test_import.py`
+  - New evidence on same machine/profile:
+    - isolated metadata loop: Rust backend `10508 ops/s` vs Python backend `6428 ops/s`.
+    - online harness: Rust backend `1614.35 tok/s` vs Python backend `1590.42 tok/s` (`+1.50%`).
+    - offline harness: near parity (`-0.02%`).
 - Practical takeaway from `sgl-model-gateway` reuse pattern:
   - efficient model-gateway usage keeps Python at coarse control plane boundary (`Router.from_args(...).start()`),
   - hot request path runs in Rust process, avoiding per-step Python↔Rust marshalling.

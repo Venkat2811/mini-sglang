@@ -97,6 +97,12 @@ class RustHotpathCpuBackend:
     def __init__(self):
         self.stats = CpuBackendStats(selected_backend=self.name)
         self.rust_mod = None
+        self._cached_batch_id: int | None = None
+        self._cached_positions: torch.Tensor | None = None
+        self._cached_input_mapping: torch.Tensor | None = None
+        self._cached_write_req_mapping: torch.Tensor | None = None
+        self._cached_write_pos: torch.Tensor | None = None
+        self._cached_uses_remaining = 0
         try:
             self.rust_mod = _load_rust_module()
             logger.info("Rust CPU backend module loaded")
@@ -115,22 +121,87 @@ class RustHotpathCpuBackend:
     def _fallback_positions(self, batch: Batch, device: torch.device) -> torch.Tensor:
         self.stats.rust_fallbacks += 1
         self.stats.python_calls += 1
+        self._invalidate_batch_cache()
         return _make_positions_python(batch, device)
 
     def _fallback_input(self, batch: Batch, device: torch.device) -> Tuple[torch.Tensor, torch.Tensor]:
         self.stats.rust_fallbacks += 1
         self.stats.python_calls += 1
+        self._invalidate_batch_cache()
         return _make_input_tuple_python(batch, device)
 
     def _fallback_write(self, batch: Batch, device: torch.device) -> Tuple[torch.Tensor, torch.Tensor]:
         self.stats.rust_fallbacks += 1
         self.stats.python_calls += 1
+        self._invalidate_batch_cache()
         return _make_write_tuple_python(batch, device)
+
+    def _invalidate_batch_cache(self) -> None:
+        self._cached_batch_id = None
+        self._cached_positions = None
+        self._cached_input_mapping = None
+        self._cached_write_req_mapping = None
+        self._cached_write_pos = None
+        self._cached_uses_remaining = 0
+
+    @staticmethod
+    def _from_i32_buffer_to_device(buffer_obj: Any, device: torch.device) -> torch.Tensor:
+        src = torch.frombuffer(buffer_obj, dtype=torch.int32)
+        if device.type == "cpu":
+            return src.clone()
+        return src.to(device, non_blocking=True)
+
+    def _ensure_cached_metadata(self, batch: Batch, device: torch.device) -> None:
+        if self.rust_mod is None:
+            raise RuntimeError("rust backend module not loaded")
+
+        batch_id = id(batch)
+        if self._cached_batch_id == batch_id and self._cached_uses_remaining > 0:
+            return
+
+        if not hasattr(self.rust_mod, "make_metadata_buffers"):
+            self._invalidate_batch_cache()
+            return
+
+        table_idxs_padded, cached_lens, device_lens_padded, _ = self._req_shapes(batch, padded=True)
+        table_idxs, _, device_lens, can_decode = self._req_shapes(batch, padded=False)
+        (
+            positions_buf,
+            input_mapping_buf,
+            write_req_mapping_buf,
+            write_pos_buf,
+        ) = self.rust_mod.make_metadata_buffers(
+            table_idxs_padded,
+            cached_lens,
+            device_lens_padded,
+            table_idxs,
+            device_lens,
+            can_decode,
+        )
+        self.stats.rust_calls += 1
+        self._cached_positions = self._from_i32_buffer_to_device(positions_buf, device)
+        self._cached_input_mapping = self._from_i32_buffer_to_device(input_mapping_buf, device)
+        self._cached_write_req_mapping = self._from_i32_buffer_to_device(write_req_mapping_buf, device)
+        self._cached_write_pos = self._from_i32_buffer_to_device(write_pos_buf, device)
+        self._cached_batch_id = batch_id
+        self._cached_uses_remaining = 3
+
+    def _consume_cache_use(self) -> None:
+        if self._cached_uses_remaining <= 0:
+            return
+        self._cached_uses_remaining -= 1
+        if self._cached_uses_remaining == 0:
+            self._invalidate_batch_cache()
 
     def make_positions(self, batch: Batch, device: torch.device) -> torch.Tensor:
         if self.rust_mod is None:
             return self._fallback_positions(batch, device)
         try:
+            self._ensure_cached_metadata(batch, device)
+            if self._cached_positions is not None:
+                positions = self._cached_positions
+                self._consume_cache_use()
+                return positions
             _, cached_lens, device_lens, _ = self._req_shapes(batch, padded=True)
             positions = self.rust_mod.make_positions(cached_lens, device_lens)
             self.stats.rust_calls += 1
@@ -144,6 +215,12 @@ class RustHotpathCpuBackend:
         if self.rust_mod is None:
             return self._fallback_input(batch, device)
         try:
+            self._ensure_cached_metadata(batch, device)
+            if self._cached_input_mapping is not None and self._cached_positions is not None:
+                input_mapping = self._cached_input_mapping
+                positions = self._cached_positions
+                self._consume_cache_use()
+                return input_mapping, positions
             table_idxs, cached_lens, device_lens, _ = self._req_shapes(batch, padded=True)
             mapping = self.rust_mod.make_input_mapping(table_idxs, cached_lens, device_lens)
             self.stats.rust_calls += 1
@@ -157,6 +234,12 @@ class RustHotpathCpuBackend:
         if self.rust_mod is None:
             return self._fallback_write(batch, device)
         try:
+            self._ensure_cached_metadata(batch, device)
+            if self._cached_write_req_mapping is not None and self._cached_write_pos is not None:
+                req_mapping = self._cached_write_req_mapping
+                write_pos = self._cached_write_pos
+                self._consume_cache_use()
+                return req_mapping, write_pos
             table_idxs, _, device_lens, can_decode = self._req_shapes(batch, padded=False)
             req_mapping, write_mapping = self.rust_mod.make_write_mapping(
                 table_idxs, device_lens, can_decode

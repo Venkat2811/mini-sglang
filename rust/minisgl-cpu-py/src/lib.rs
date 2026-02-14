@@ -9,6 +9,7 @@ use minisgl_cpu_core::{
 use pyo3::{
     exceptions::{PyKeyError, PyRuntimeError, PyValueError},
     prelude::*,
+    types::PyByteArray,
 };
 
 #[pyclass(name = "SamplingParams")]
@@ -183,6 +184,73 @@ fn make_write_mapping(
     Ok(core_make_write_tuple(&reqs))
 }
 
+fn vec_i32_to_bytearray<'py>(py: Python<'py>, values: &[i32]) -> Bound<'py, PyByteArray> {
+    let byte_len = std::mem::size_of_val(values);
+    let ptr = values.as_ptr().cast::<u8>();
+    let bytes = unsafe { std::slice::from_raw_parts(ptr, byte_len) };
+    PyByteArray::new(py, bytes)
+}
+
+#[pyfunction]
+#[allow(clippy::type_complexity)]
+fn make_metadata_buffers<'py>(
+    py: Python<'py>,
+    table_idxs_padded: Vec<i32>,
+    cached_lens: Vec<usize>,
+    device_lens_padded: Vec<usize>,
+    table_idxs: Vec<i32>,
+    device_lens: Vec<usize>,
+    can_decode: Vec<bool>,
+) -> PyResult<(
+    Bound<'py, PyByteArray>,
+    Bound<'py, PyByteArray>,
+    Bound<'py, PyByteArray>,
+    Bound<'py, PyByteArray>,
+)> {
+    if table_idxs_padded.len() != cached_lens.len() || cached_lens.len() != device_lens_padded.len()
+    {
+        return Err(PyValueError::new_err(
+            "table_idxs_padded, cached_lens, and device_lens_padded lengths must match",
+        ));
+    }
+
+    let mut padded_reqs = make_reqs_for_positions(&cached_lens, &device_lens_padded)?;
+    for (req, table_idx) in padded_reqs.iter_mut().zip(table_idxs_padded) {
+        req.table_idx = table_idx;
+    }
+    let positions = core_make_positions(&padded_reqs);
+    let input_mapping = core_make_input_mapping(&padded_reqs);
+
+    if table_idxs.len() != device_lens.len() || device_lens.len() != can_decode.len() {
+        return Err(PyValueError::new_err(
+            "table_idxs, device_lens, and can_decode lengths must match",
+        ));
+    }
+    let mut reqs = Vec::with_capacity(table_idxs.len());
+    for idx in 0..table_idxs.len() {
+        let decode = can_decode[idx];
+        let device_len = device_lens[idx];
+        reqs.push(ScheduledReq {
+            uid: idx as u64,
+            table_idx: table_idxs[idx],
+            cached_len: 0,
+            device_len,
+            max_device_len: device_len + usize::from(decode),
+            output_len: usize::from(decode),
+            cache_handle: DummyHandle,
+            is_chunked: !decode,
+        });
+    }
+    let (write_req_mapping, write_mapping) = core_make_write_tuple(&reqs);
+
+    Ok((
+        vec_i32_to_bytearray(py, &positions),
+        vec_i32_to_bytearray(py, &input_mapping),
+        vec_i32_to_bytearray(py, &write_req_mapping),
+        vec_i32_to_bytearray(py, &write_mapping),
+    ))
+}
+
 #[derive(Clone, Debug)]
 struct PrefillHandle;
 
@@ -318,6 +386,7 @@ fn mini_sgl_cpu_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(make_positions, m)?)?;
     m.add_function(wrap_pyfunction!(make_input_mapping, m)?)?;
     m.add_function(wrap_pyfunction!(make_write_mapping, m)?)?;
+    m.add_function(wrap_pyfunction!(make_metadata_buffers, m)?)?;
     m.add_function(wrap_pyfunction!(prefill_admission_plan, m)?)?;
     m.add_class::<PySamplingParams>()?;
     m.add_class::<PyRadixCacheManager>()?;

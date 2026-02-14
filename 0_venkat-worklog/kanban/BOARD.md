@@ -9,6 +9,12 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 - Online (`/v1/chat/completions`): ~1568 tok/s, TTFT ~50 ms, TPOT ~4.44 ms in 8-request run.
 - Goal: beat these numbers while preserving behavior.
 
+## Latest A/B Snapshot (Python vs Rust CPU backend)
+
+- Offline: near parity (latest run delta `-0.02%`).
+- Online: Rust backend ahead (latest run delta `+1.50%` throughput).
+- Details recorded in `baselines/2026-02-14-rtx3060-qwen2.5-0.5b.md`.
+
 ## Baseline Documentation
 
 - Runbook (sanitized + reproducible): `RUNBOOK.md`
@@ -31,13 +37,12 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 ## Priority Order (Execution Sequence)
 
 1. `in-progress/P0-004-rust-prefill-admission-and-batch-mapping.md`
-2. `in-progress/P0-005-pyo3-bindings-and-python-integration.md`
-3. `todo/P0-006-shadow-mode-and-parity-corpus.md`
-4. `todo/P1-007-rust-gateway-skeleton-axum.md`
-5. `todo/P1-008-rust-tokenizer-detokenizer-service.md`
-6. `todo/P1-009-typed-transport-migration.md`
-7. `todo/P1-010-observability-and-release-gates.md`
-8. `backlog/BK-001-super-optimized-runtime-track.md`
+2. `todo/P0-006-shadow-mode-and-parity-corpus.md`
+3. `todo/P1-007-rust-gateway-skeleton-axum.md`
+4. `todo/P1-008-rust-tokenizer-detokenizer-service.md`
+5. `todo/P1-009-typed-transport-migration.md`
+6. `todo/P1-010-observability-and-release-gates.md`
+7. `backlog/BK-001-super-optimized-runtime-track.md`
 
 ## Definition of Done (Per Card)
 
