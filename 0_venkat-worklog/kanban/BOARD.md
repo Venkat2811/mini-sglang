@@ -17,6 +17,7 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 - Deterministic token parity check (`python` vs `rust_hotpath`): passed for both text and token prompt sets.
 - Tokenizer-heavy online rerun: Rust tokenizer backends remain behind Python tokenizer on this machine (`~5%` to `~7%` delta in latest controlled sequential runs).
 - Typed transport microbench (new schema v1) shows strong CPU-side serialization gain (`+74%` backend ops/s, `+107%` tokenizer ops/s).
+- Queue transport latency counters are available behind `MINISGL_TRANSPORT_LATENCY_STATS`.
 - Details recorded in `0_venkat-worklog/baselines/2026-02-14-rtx3060-qwen2.5-0.5b.md`.
 - Parity corpus details: `0_venkat-worklog/baselines/2026-02-14-shadow-parity-corpus.md`.
 

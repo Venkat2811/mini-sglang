@@ -284,6 +284,17 @@ MINISGL_TYPED_TRANSPORT=1 python -m minisgl \
   --port 1919
 ```
 
+Enable queue transport latency counters while running server:
+
+```bash
+cd mini-sglang
+source .venv/bin/activate
+MINISGL_TRANSPORT_LATENCY_STATS=1 python -m minisgl \
+  --model-path Qwen/Qwen2.5-0.5B-Instruct \
+  --host 127.0.0.1 \
+  --port 1919
+```
+
 Microbenchmark transport encode+msgpack+decode overhead:
 
 ```bash

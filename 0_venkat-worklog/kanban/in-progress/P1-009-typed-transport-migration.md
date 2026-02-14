@@ -13,7 +13,7 @@ Replace Python dataclass recursive serialization path with typed schema and lowe
 - [x] Define stable request/reply schemas (versioned).
 - [x] Implement serializer/deserializer and compatibility parser in Python.
 - [x] Add dual-stack mode (old + new transport).
-- [ ] Add transport latency counters.
+- [x] Add transport latency counters.
 
 ## TDD Subtasks
 
@@ -45,6 +45,12 @@ Replace Python dataclass recursive serialization path with typed schema and lowe
 - Added tests:
   - `tests/misc/test_typed_transport.py`
   - covers typed roundtrip, legacy compatibility, and unknown schema rejection.
+- Added transport latency counters in ZeroMQ queues (`python/minisgl/utils/mp.py`):
+  - env flag: `MINISGL_TRANSPORT_LATENCY_STATS`
+  - snapshot API: `minisgl.utils.transport_stats_snapshot(reset=...)`
+  - queue timing includes encode/pack/send and recv/unpack/decode stages.
+- Added queue stats test:
+  - `tests/misc/test_transport_stats.py`
 - Added reproducible microbench CLI:
   - `python/minisgl/benchmark/transport_overhead.py`
   - output artifact: `0_venkat-worklog/baselines/latest-transport-overhead.json`
