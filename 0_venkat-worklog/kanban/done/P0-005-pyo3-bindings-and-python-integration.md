@@ -1,7 +1,7 @@
 # P0-005: PyO3 Bindings and Python Scheduler Integration
 
 Priority: P0  
-Status: in-progress  
+Status: done  
 Depends on: P0-004
 
 ## Objective
