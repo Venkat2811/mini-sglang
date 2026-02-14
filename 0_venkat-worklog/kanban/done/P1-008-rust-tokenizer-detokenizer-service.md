@@ -1,7 +1,7 @@
 # P1-008: Rust Tokenizer/Detokenizer Service
 
 Priority: P1  
-Status: in-progress  
+Status: done  
 Depends on: P1-007
 
 ## Objective
@@ -13,24 +13,24 @@ Move tokenizer/detokenizer worker path from Python process to Rust service imple
 - [x] Define tokenizer interface compatible with current request/reply flow.
 - [x] Implement batching support (fixes current Python TODO gap).
 - [x] Implement incremental detokenization behavior parity.
-- [ ] Preserve streaming chunk semantics.
+- [x] Preserve streaming chunk semantics.
 
 ## TDD Subtasks
 
 1. Red
-- [ ] Create failing golden tests for tokenize and detokenize parity vs Python implementation.
+- [x] Create failing golden tests for tokenize and detokenize parity vs Python implementation.
 - [x] Add failing tests for multilingual and CJK streaming behavior.
 
 2. Green
 - [x] Implement tokenization and detokenization modules to pass parity tests.
 
 3. Refactor
-- [ ] Optimize batching heuristics and memory usage.
+- [x] Optimize batching heuristics and memory usage.
 
 ## Acceptance Criteria
 
-- [ ] Output text chunks match Python behavior for parity corpus.
-- [ ] Tokenizer CPU time/request improves relative to Python worker baseline.
+- [x] Output text chunks match Python behavior for parity corpus.
+- [x] Tokenizer CPU time/request improves relative to Python worker baseline.
 
 ## Progress Notes (2026-02-14)
 
@@ -78,3 +78,21 @@ Move tokenizer/detokenizer worker path from Python process to Rust service imple
   - rust_tokenize_only: `-7.63%`
   - rust_inprocess: `-5.13%`
 - Decision: keep tokenizer work as active but non-blocking; prioritize typed transport migration (`P1-009`) for broader CPU-side overhead reduction.
+
+## Progress Notes (2026-02-14, later session)
+
+- Added Python-parity golden tests directly in Rust tokenizer crate:
+  - `tokenize_matches_python_oracle_for_text_and_chat_prompts`
+  - `detokenize_matches_python_oracle_for_interleaved_multilingual_streams`
+- Refactored Rust tokenize hot path to reduce CPU overhead:
+  - removed avoidable prompt string cloning in all-text batch path
+  - switched batch encode API to borrowed slices (`&[&str]`)
+  - reduced per-token cast overhead in `cast_u32_to_i32`
+- Validation:
+  - `cargo test -p minisgl-cpu-tokenizer`
+  - `cargo clippy -p minisgl-cpu-tokenizer --all-targets -- -D warnings`
+  - `pytest tests/misc/test_tokenizer_rust_backend.py`
+- CPU-only tokenizer manager microbench (same machine, `Qwen/Qwen2.5-0.5B-Instruct`, batch size 16):
+  - text-only batch latency: python `11.13 ms`, rust `1.49 ms` (`+86.57%` faster)
+  - mixed text/chat batch latency: python `10.48 ms`, rust `6.25 ms` (`+40.43%` faster)
+- Note: end-to-end online throughput still depends on additional components beyond tokenizer manager latency.

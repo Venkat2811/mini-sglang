@@ -96,3 +96,32 @@ Takeaway:
 
 - Rust tokenizer remains parity-correct but still below Python tokenizer path in end-to-end online throughput for this workload.
 - Work will continue on lower-overhead transport path (`P1-009`) before further tokenizer micro-optimizations.
+
+## CPU-Only Tokenizer Manager Microbench (2026-02-14, later session)
+
+Purpose: isolate tokenizer manager CPU cost from GPU serving, scheduler, and transport effects.
+
+Setup:
+
+- model: `Qwen/Qwen2.5-0.5B-Instruct`
+- batch size: `16`
+- runs: `5` samples per mode, `200` iterations/sample after warmup
+- compared managers:
+  - Python: `minisgl.tokenizer.tokenize.TokenizeManager`
+  - Rust: `minisgl.tokenizer.rust_backend.RustTokenizerManagers`
+
+Results (mean batch latency):
+
+- text-only prompts:
+  - python: `11.13 ms`
+  - rust: `1.49 ms`
+  - rust faster by `86.57%`
+- mixed text/chat prompts:
+  - python: `10.48 ms`
+  - rust: `6.25 ms`
+  - rust faster by `40.43%`
+
+Interpretation:
+
+- Rust tokenizer manager now shows clear CPU-side latency advantage in isolation.
+- Remaining end-to-end gap comes from non-tokenizer costs in the online serving path.

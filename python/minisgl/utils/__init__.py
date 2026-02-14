@@ -11,6 +11,13 @@ from .mp import (
     ZmqSubQueue,
     transport_stats_snapshot,
 )
+from .runtime_metrics import (
+    record_backend_fallback,
+    record_backend_selection,
+    record_scheduler_step,
+    record_tokenizer_latency,
+    runtime_metrics_snapshot,
+)
 from .registry import Registry
 from .torch_utils import nvtx_annotate, torch_dtype
 
@@ -35,4 +42,9 @@ __all__ = [
     "ZmqAsyncPushQueue",
     "ZmqAsyncPullQueue",
     "transport_stats_snapshot",
+    "runtime_metrics_snapshot",
+    "record_scheduler_step",
+    "record_tokenizer_latency",
+    "record_backend_selection",
+    "record_backend_fallback",
 ]

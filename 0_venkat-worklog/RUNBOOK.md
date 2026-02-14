@@ -168,6 +168,12 @@ Terminal 1: stop server with `Ctrl+C`.
 
 Run with one backend as primary and the other in shadow for metadata decision comparison.
 
+Supported CPU backend mode values (`MINISGL_CPU_BACKEND`):
+
+- `python` or `python_cpu`
+- `rust_hotpath` or `rust_inprocess_ffi`
+- `rust_service` (transitional mode; currently falls back to `rust_hotpath` until service client wiring lands)
+
 Terminal 1: start server with shadow mode enabled
 
 ```bash
@@ -307,6 +313,26 @@ python -m minisgl.benchmark.transport_overhead \
   --out 0_venkat-worklog/baselines/latest-transport-overhead.json
 ```
 
+Runtime metrics snapshot (scheduler/tokenizer/backend selection and fallback counters):
+
+```bash
+cd mini-sglang
+source .venv/bin/activate
+python - <<'PY'
+from minisgl.utils import runtime_metrics_snapshot
+print(runtime_metrics_snapshot(reset=False))
+PY
+```
+
+Runtime metrics can be disabled if needed:
+
+```bash
+MINISGL_RUNTIME_METRICS=0 python -m minisgl \
+  --model-path Qwen/Qwen2.5-0.5B-Instruct \
+  --host 127.0.0.1 \
+  --port 1919
+```
+
 ## 10. Release Gate (Perf + Parity + Stability)
 
 Evaluate go/no-go from benchmark artifacts:
@@ -333,3 +359,11 @@ python -m minisgl.benchmark.release_gate \
   --max-throughput-cv 0.10 \
   --max-ttft-cv 0.15
 ```
+
+Go/No-Go checklist (release candidate):
+
+- Perf gate: `throughput_token_per_s` and `ttft_ms.avg` satisfy `gates.online.yaml`.
+- Parity gate: `parity_passed == true` in `latest-token-parity.json`.
+- Shadow gate: divergence entries `<= max_shadow_divergences` (default `0`).
+- Stability gate: coefficient of variation limits meet `max_throughput_cv` and `max_ttft_cv`.
+- Transport/runtime observability snapshots are captured and archived with the run artifacts.

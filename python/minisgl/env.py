@@ -75,9 +75,12 @@ class EnvClassSingleton:
     CPU_BACKEND_SHADOW_REPORT = EnvStr("")
     CPU_BACKEND_SHADOW_MAX_DIFFS = EnvInt(128)
     CPU_BACKEND_SHADOW_EVERY_N = EnvInt(1)
+    CPU_SERVICE_URL = EnvStr("http://127.0.0.1:4050")
+    CPU_SERVICE_TIMEOUT_MS = EnvInt(1000)
     TOKENIZER_BACKEND = EnvVar("python", fn=lambda x: x.strip().lower())
     TYPED_TRANSPORT = EnvBool(True)
     TRANSPORT_LATENCY_STATS = EnvBool(False)
+    RUNTIME_METRICS = EnvBool(True)
 
     def __new__(cls):
         # single instance

@@ -29,6 +29,7 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 - Recorded run results: `0_venkat-worklog/baselines/2026-02-14-rtx3060-qwen2.5-0.5b.md`
 - Tokenizer backend A/B: `0_venkat-worklog/baselines/2026-02-14-tokenizer-backend-ab.md`
 - Tokenizer research note: `0_venkat-worklog/research/2026-02-14-rust-tokenizer-landscape.md`
+- CPU service cutover design: `0_venkat-worklog/research/2026-02-14-rust-cpu-service-cutover-design.md`
 - Typed transport microbench: `0_venkat-worklog/baselines/latest-transport-overhead.json`
 - Release gate config: `0_venkat-worklog/baselines/gates.release.yaml`
 
@@ -48,12 +49,10 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 
 ## Priority Order (Execution Sequence)
 
-1. `in-progress/P1-008-rust-tokenizer-detokenizer-service.md`
-2. `in-progress/P1-010-observability-and-release-gates.md`
-3. `todo/P1-011-rust-cpu-service-cutover-no-inprocess-ffi.md`
-4. `todo/P1-012-remove-pyo3-runtime-path.md`
-5. `backlog/BK-001-super-optimized-runtime-track.md`
-6. `backlog/BK-002-standard-corpus-benchmark-sharegpt.md`
+1. `in-progress/P1-011-rust-cpu-service-cutover-no-inprocess-ffi.md`
+2. `todo/P1-012-remove-pyo3-runtime-path.md`
+3. `backlog/BK-001-super-optimized-runtime-track.md`
+4. `backlog/BK-002-standard-corpus-benchmark-sharegpt.md`
 
 ## Definition of Done (Per Card)
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from time import perf_counter_ns
 from typing import TYPE_CHECKING, List, NamedTuple, NoReturn, Set, Tuple, TypeAlias
 
 import torch
@@ -13,7 +14,7 @@ from minisgl.message import (
     ExitMsg,
     UserMsg,
 )
-from minisgl.utils import init_logger
+from minisgl.utils import init_logger, record_backend_selection, record_scheduler_step
 from transformers import AutoTokenizer
 
 from .cache import CacheManager
@@ -82,6 +83,15 @@ class Scheduler(SchedulerIOMixin):
         self.cpu_backend = create_cpu_backend(str(ENV.CPU_BACKEND))
         self._last_backend_stats: dict[str, int | str] | None = None
         logger.info_rank0("CPU backend selected: %s", self.cpu_backend.name)
+        record_backend_selection(component="cpu", backend=self.cpu_backend.name)
+
+    def _record_scheduler_step(self, duration_ns: int) -> None:
+        record_scheduler_step(
+            duration_ns=duration_ns,
+            queue_prefill=len(self.prefill_manager.pending_list),
+            queue_decode=len(self.decode_manager.running_reqs),
+            inflight_tokens=self.decode_manager.inflight_tokens,
+        )
 
     def _process_last_data(
         self, last_data: ForwardData | None, ongoing_data: ForwardData | None
@@ -241,12 +251,16 @@ class Scheduler(SchedulerIOMixin):
             with self.engine_stream_ctx:
                 self.engine.stream.wait_stream(self.stream)
                 while True:
+                    t0 = perf_counter_ns()
                     self.normal_loop()
+                    self._record_scheduler_step(perf_counter_ns() - t0)
         else:
             assert torch.cuda.current_stream() == self.stream
             data = None
             while True:
+                t0 = perf_counter_ns()
                 data = self.overlap_loop(data)
+                self._record_scheduler_step(perf_counter_ns() - t0)
 
     def shutdown(self) -> None:
         torch.cuda.synchronize(self.device)

@@ -1,7 +1,7 @@
 # P1-010: Observability and Release Gates
 
 Priority: P1  
-Status: in-progress  
+Status: done  
 Depends on: P1-009
 
 ## Objective
@@ -16,34 +16,34 @@ Add production-grade observability and strict rollout gates for Rust CPU backend
 
 ## Checklist
 
-- [ ] Add metrics:
-  - [ ] scheduler step latency
-  - [ ] queue length and inflight count
-  - [ ] tokenizer latency
+- [x] Add metrics:
+  - [x] scheduler step latency
+  - [x] queue length and inflight count
+  - [x] tokenizer latency
   - [x] transport latency
-  - [ ] backend selection/fallback counts
+  - [x] backend selection/fallback counts
 - [x] Add release gate script:
   - [x] parity gate
   - [x] perf gate
   - [x] stability gate
-- [ ] Document go/no-go checklist.
+- [x] Document go/no-go checklist.
 
 ## TDD Subtasks
 
 1. Red
-- [ ] Write failing tests for metric registration and endpoint exposure.
+- [x] Write failing tests for metric registration and endpoint exposure.
 - [x] Write failing tests for release gate checks on synthetic bad runs.
 
 2. Green
 - [x] Implement metrics and gate evaluation logic.
 
 3. Refactor
-- [ ] Consolidate metric labels and avoid high-cardinality mistakes.
+- [x] Consolidate metric labels and avoid high-cardinality mistakes.
 
 ## Acceptance Criteria
 
 - [x] One-command gate run outputs clear pass/fail decision.
-- [ ] Rollout criteria are objective and reproducible.
+- [x] Rollout criteria are objective and reproducible.
 
 ## Progress Notes (2026-02-14)
 
@@ -59,3 +59,27 @@ Add production-grade observability and strict rollout gates for Rust CPU backend
 - Transport latency observability now available behind:
   - `MINISGL_TRANSPORT_LATENCY_STATS`
   - API: `minisgl.utils.transport_stats_snapshot(reset=...)`
+
+## Progress Notes (2026-02-14, later session)
+
+- Added runtime metrics registry and snapshot API:
+  - `python/minisgl/utils/runtime_metrics.py`
+  - API: `minisgl.utils.runtime_metrics_snapshot(reset=...)`
+  - controls: `MINISGL_RUNTIME_METRICS` (default enabled)
+- Instrumented scheduler loop metrics:
+  - scheduler step latency
+  - queue depth (`prefill`, `decode`)
+  - inflight decode tokens
+- Instrumented tokenizer worker metrics:
+  - tokenize/detokenize latency and item counts
+  - backend selection and fallback counters
+- Instrumented CPU backend fallback counters:
+  - module load errors
+  - make_positions/make_input/make_write fallback paths
+  - unknown backend mode fallback
+- Added runtime metrics tests:
+  - `tests/misc/test_runtime_metrics.py`
+  - includes disabled-mode no-op verification
+- Updated runbook with:
+  - runtime metrics snapshot command
+  - release go/no-go checklist

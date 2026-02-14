@@ -68,7 +68,7 @@ impl DecodeStatus {
 
 pub trait TokenizerBackend: Send + Sync {
     fn encode_one(&self, text: &str) -> Result<Vec<u32>>;
-    fn encode_batch(&self, texts: &[String]) -> Result<Vec<Vec<u32>>>;
+    fn encode_batch(&self, texts: &[&str]) -> Result<Vec<Vec<u32>>>;
     fn apply_chat_template(&self, messages: &[ChatMessage]) -> Result<String>;
     fn decode_batch(&self, ids: &[Vec<u32>]) -> Result<Vec<String>>;
     fn eos_token_id(&self) -> Option<u32>;
@@ -111,9 +111,8 @@ impl TokenizerBackend for HfTokenizerBackend {
         Ok(self.tokenizer.encode(text, true)?.token_ids().to_vec())
     }
 
-    fn encode_batch(&self, texts: &[String]) -> Result<Vec<Vec<u32>>> {
-        let refs: Vec<&str> = texts.iter().map(String::as_str).collect();
-        let encodings = self.tokenizer.encode_batch(&refs, true)?;
+    fn encode_batch(&self, texts: &[&str]) -> Result<Vec<Vec<u32>>> {
+        let encodings = self.tokenizer.encode_batch(texts, true)?;
         Ok(encodings
             .into_iter()
             .map(|encoding| encoding.token_ids().to_vec())
@@ -170,13 +169,12 @@ impl<B: TokenizerBackend> TokenizeManager<B> {
             .iter()
             .all(|r| matches!(r.prompt, PromptInput::Text { .. }));
         if all_text {
-            let texts: Vec<String> = requests
-                .iter()
-                .map(|r| match &r.prompt {
-                    PromptInput::Text { text } => text.clone(),
-                    PromptInput::Messages { .. } => String::new(),
-                })
-                .collect();
+            let mut texts: Vec<&str> = Vec::with_capacity(requests.len());
+            for request in requests {
+                if let PromptInput::Text { text } = &request.prompt {
+                    texts.push(text.as_str());
+                }
+            }
 
             let encoded = self.backend.encode_batch(&texts)?;
             let outputs = requests
@@ -352,11 +350,12 @@ fn slice_from_char_idx(text: &str, start_char_idx: usize) -> String {
 }
 
 fn cast_u32_to_i32(ids: Vec<u32>) -> Result<Vec<i32>> {
-    ids.into_iter()
-        .map(|id| {
-            i32::try_from(id).map_err(|_| anyhow::anyhow!("token id {} does not fit in i32", id))
-        })
-        .collect()
+    if cfg!(debug_assertions) {
+        if let Some(bad) = ids.iter().find(|id| **id > i32::MAX as u32) {
+            return Err(anyhow::anyhow!("token id {} does not fit in i32", bad));
+        }
+    }
+    Ok(ids.into_iter().map(|id| id as i32).collect())
 }
 
 fn i32_to_u32(id: i32) -> Result<u32> {
@@ -404,7 +403,7 @@ mod tests {
             Ok(text.bytes().map(u32::from).collect())
         }
 
-        fn encode_batch(&self, texts: &[String]) -> Result<Vec<Vec<u32>>> {
+        fn encode_batch(&self, texts: &[&str]) -> Result<Vec<Vec<u32>>> {
             Ok(texts
                 .iter()
                 .map(|t| t.bytes().map(u32::from).collect::<Vec<u32>>())
@@ -433,6 +432,208 @@ mod tests {
 
         fn eos_token_id(&self) -> Option<u32> {
             Some(0)
+        }
+    }
+
+    fn python_tokenize_oracle<B: TokenizerBackend>(
+        backend: &B,
+        requests: &[TokenizeRequest],
+    ) -> Vec<TokenizeOutput> {
+        let mut out = Vec::with_capacity(requests.len());
+        for request in requests {
+            let ids = match &request.prompt {
+                PromptInput::Text { text } => backend.encode_one(text).expect("encode_one"),
+                PromptInput::Messages { messages } => {
+                    let prompt = backend
+                        .apply_chat_template(messages)
+                        .expect("apply_chat_template");
+                    backend.encode_one(&prompt).expect("encode_one")
+                }
+            };
+            out.push(TokenizeOutput {
+                uid: request.uid,
+                input_ids: cast_u32_to_i32(ids).expect("cast_u32_to_i32"),
+            });
+        }
+        out
+    }
+
+    struct PythonDetokenizeOracle {
+        decode_map: HashMap<u64, DecodeStatus>,
+        eos_token_id: Option<u32>,
+    }
+
+    impl PythonDetokenizeOracle {
+        fn new(eos_token_id: Option<u32>) -> Self {
+            Self {
+                decode_map: HashMap::new(),
+                eos_token_id,
+            }
+        }
+
+        fn detokenize<B: TokenizerBackend>(
+            &mut self,
+            backend: &B,
+            requests: &[DetokenizeRequest],
+        ) -> Vec<String> {
+            let mut read_ids = Vec::with_capacity(requests.len());
+            let mut surr_ids = Vec::with_capacity(requests.len());
+            for request in requests {
+                let state = self
+                    .decode_map
+                    .entry(request.uid)
+                    .or_insert_with(DecodeStatus::new);
+                let token = i32_to_u32(request.next_token).expect("i32_to_u32");
+                let is_final_eos = request.finished && self.eos_token_id == Some(token);
+                if !is_final_eos {
+                    state.decoded_ids.push(token);
+                }
+                read_ids.push(state.decoded_ids[state.surr_offset..].to_vec());
+                surr_ids.push(state.decoded_ids[state.surr_offset..state.read_offset].to_vec());
+            }
+
+            let read_texts = backend.decode_batch(&read_ids).expect("decode_batch");
+            let surr_texts = backend.decode_batch(&surr_ids).expect("decode_batch");
+            let mut out = Vec::with_capacity(requests.len());
+            for ((request, read_str), surr_str) in requests.iter().zip(read_texts).zip(surr_texts) {
+                let state = self.decode_map.get_mut(&request.uid).expect("decode state");
+                let mut new_text = slice_from_char_idx(&read_str, surr_str.chars().count());
+                let output_str = if !new_text.is_empty() && !new_text.ends_with('\u{FFFD}') {
+                    let mut output = String::with_capacity(state.decoded_str.len() + new_text.len());
+                    output.push_str(&state.decoded_str);
+                    output.push_str(&new_text);
+                    state.decoded_str = output.clone();
+                    state.surr_offset = state.read_offset;
+                    state.read_offset = state.decoded_ids.len();
+                    output
+                } else {
+                    new_text = find_printable_text(&new_text);
+                    let mut output = String::with_capacity(state.decoded_str.len() + new_text.len());
+                    output.push_str(&state.decoded_str);
+                    output.push_str(&new_text);
+                    output
+                };
+
+                let incremental_output = slice_from_char_idx(&output_str, state.sent_offset_chars);
+                state.sent_offset_chars = output_str.chars().count();
+                out.push(incremental_output);
+                if request.finished {
+                    self.decode_map.remove(&request.uid);
+                }
+            }
+            out
+        }
+
+        fn active_sequences(&self) -> usize {
+            self.decode_map.len()
+        }
+    }
+
+    #[test]
+    fn tokenize_matches_python_oracle_for_text_and_chat_prompts() {
+        let backend = FakeBackend;
+        let mgr = TokenizeManager::new(backend.clone());
+        let requests = vec![
+            TokenizeRequest {
+                uid: 11,
+                prompt: PromptInput::Text {
+                    text: "alpha beta".to_string(),
+                },
+            },
+            TokenizeRequest {
+                uid: 12,
+                prompt: PromptInput::Messages {
+                    messages: vec![
+                        ChatMessage {
+                            role: "system".to_string(),
+                            content: "You are concise.".to_string(),
+                        },
+                        ChatMessage {
+                            role: "user".to_string(),
+                            content: "Say hi".to_string(),
+                        },
+                    ],
+                },
+            },
+            TokenizeRequest {
+                uid: 13,
+                prompt: PromptInput::Text {
+                    text: "你好".to_string(),
+                },
+            },
+        ];
+
+        let expected = python_tokenize_oracle(&backend, &requests);
+        let actual = mgr.tokenize(&requests).expect("tokenize");
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn detokenize_matches_python_oracle_for_interleaved_multilingual_streams() {
+        let backend = FakeBackend;
+        let mut rust_mgr = DetokenizeManager::new(backend.clone());
+        let mut python_oracle = PythonDetokenizeOracle::new(backend.eos_token_id());
+
+        let steps = vec![
+            vec![
+                DetokenizeRequest {
+                    uid: 1,
+                    next_token: '你' as i32,
+                    finished: false,
+                },
+                DetokenizeRequest {
+                    uid: 2,
+                    next_token: 'h' as i32,
+                    finished: false,
+                },
+            ],
+            vec![
+                DetokenizeRequest {
+                    uid: 1,
+                    next_token: 0xD800,
+                    finished: false,
+                },
+                DetokenizeRequest {
+                    uid: 2,
+                    next_token: 'i' as i32,
+                    finished: false,
+                },
+            ],
+            vec![
+                DetokenizeRequest {
+                    uid: 1,
+                    next_token: '好' as i32,
+                    finished: false,
+                },
+                DetokenizeRequest {
+                    uid: 2,
+                    next_token: ' ' as i32,
+                    finished: false,
+                },
+            ],
+            vec![
+                DetokenizeRequest {
+                    uid: 1,
+                    next_token: 0,
+                    finished: true,
+                },
+                DetokenizeRequest {
+                    uid: 2,
+                    next_token: 0,
+                    finished: true,
+                },
+            ],
+        ];
+
+        for requests in steps {
+            let expected = python_oracle.detokenize(&backend, &requests);
+            let actual = rust_mgr.detokenize(&requests).expect("detokenize");
+            let actual_text = actual
+                .into_iter()
+                .map(|item| item.incremental_output)
+                .collect::<Vec<String>>();
+            assert_eq!(actual_text, expected);
+            assert_eq!(rust_mgr.active_sequences(), python_oracle.active_sequences());
         }
     }
 

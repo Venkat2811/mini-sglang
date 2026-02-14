@@ -112,3 +112,52 @@ def test_rust_backend_runtime_error_fallback(monkeypatch):
     assert batch.positions.tolist() == [1, 2, 3, 1, 2]
     assert input_mapping.tolist() == [3, 5]
     assert write_mapping.tolist() == [3, 5]
+
+
+def test_cpu_backend_mode_aliases_are_supported():
+    py_backend = cpu_backend.create_cpu_backend("python_cpu")
+    ffi_backend = cpu_backend.create_cpu_backend("rust_inprocess_ffi")
+
+    assert py_backend.name == "python"
+    assert ffi_backend.name == "rust_hotpath"
+
+
+def test_rust_service_mode_falls_back_to_inprocess_backend(monkeypatch):
+    class FakeRustMod:
+        @staticmethod
+        def make_positions(cached_lens, device_lens):
+            out = []
+            for cached, device in zip(cached_lens, device_lens, strict=True):
+                out.extend(range(cached, device))
+            return out
+
+        @staticmethod
+        def make_input_mapping(table_idxs, cached_lens, device_lens):
+            _ = cached_lens
+            out = []
+            for table_idx, cached, device in zip(table_idxs, cached_lens, device_lens, strict=True):
+                out.extend([table_idx] * (device - cached))
+            return out
+
+        @staticmethod
+        def make_write_mapping(table_idxs, device_lens, can_decode):
+            _ = device_lens
+            write = [1 if flag else -1 for flag in can_decode]
+            return (table_idxs, write)
+
+    monkeypatch.setattr(cpu_backend, "_load_rust_module", lambda: FakeRustMod())
+    backend = cpu_backend.create_cpu_backend("rust_service")
+    batch = _make_batch()
+    device = torch.device("cpu")
+
+    batch.positions = backend.make_positions(batch, device)
+    input_mapping, _ = backend.make_input_tuple(batch, device)
+    write_mapping, _ = backend.make_write_tuple(batch, device)
+
+    assert backend.name == "rust_service"
+    assert batch.positions.tolist() == [1, 2, 3, 1, 2]
+    assert input_mapping.tolist() == [3, 3, 3, 5, 5]
+    assert write_mapping.tolist() == [3, 5]
+    stats = backend.snapshot()
+    assert stats["selected_backend"] == "rust_service"
+    assert stats["delegate_backend"] == "rust_hotpath"

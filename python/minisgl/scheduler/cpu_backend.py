@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Tuple
 import torch
 
 from minisgl.env import ENV
-from minisgl.utils import init_logger
+from minisgl.utils import init_logger, record_backend_fallback
 
 if TYPE_CHECKING:
     from minisgl.core import Batch
@@ -112,6 +112,12 @@ class RustHotpathCpuBackend:
             logger.info("Rust CPU backend module loaded")
         except Exception as exc:
             logger.warning("Rust CPU backend requested but not available, falling back to python: %s", exc)
+            record_backend_fallback(
+                component="cpu",
+                requested=self.name,
+                selected="python",
+                reason="module_load_error",
+            )
 
     @staticmethod
     def _req_shapes(batch: Batch, padded: bool) -> tuple[list[int], list[int], list[int], list[bool]]:
@@ -125,18 +131,36 @@ class RustHotpathCpuBackend:
     def _fallback_positions(self, batch: Batch, device: torch.device) -> torch.Tensor:
         self.stats.rust_fallbacks += 1
         self.stats.python_calls += 1
+        record_backend_fallback(
+            component="cpu",
+            requested=self.name,
+            selected="python",
+            reason="make_positions_error",
+        )
         self._invalidate_batch_cache()
         return _make_positions_python(batch, device)
 
     def _fallback_input(self, batch: Batch, device: torch.device) -> Tuple[torch.Tensor, torch.Tensor]:
         self.stats.rust_fallbacks += 1
         self.stats.python_calls += 1
+        record_backend_fallback(
+            component="cpu",
+            requested=self.name,
+            selected="python",
+            reason="make_input_error",
+        )
         self._invalidate_batch_cache()
         return _make_input_tuple_python(batch, device)
 
     def _fallback_write(self, batch: Batch, device: torch.device) -> Tuple[torch.Tensor, torch.Tensor]:
         self.stats.rust_fallbacks += 1
         self.stats.python_calls += 1
+        record_backend_fallback(
+            component="cpu",
+            requested=self.name,
+            selected="python",
+            reason="make_write_error",
+        )
         self._invalidate_batch_cache()
         return _make_write_tuple_python(batch, device)
 
@@ -258,6 +282,53 @@ class RustHotpathCpuBackend:
 
     def snapshot(self) -> dict[str, int | str]:
         return self.stats.as_dict()
+
+
+class RustServiceCpuBackend:
+    """
+    Transitional service mode.
+
+    The final target is an out-of-process Rust CPU service. Until the service
+    client path lands, this mode keeps the mode surface stable and routes work
+    through the in-process Rust hotpath backend as an explicit fallback.
+    """
+
+    name = "rust_service"
+
+    def __init__(self):
+        self.stats = CpuBackendStats(selected_backend=self.name)
+        self.delegate = RustHotpathCpuBackend()
+        self.stats.rust_fallbacks += 1
+        logger.warning(
+            "Rust CPU service mode requested but service client is not wired yet; "
+            "fallback to in-process backend '%s'.",
+            self.delegate.name,
+        )
+        record_backend_fallback(
+            component="cpu",
+            requested=self.name,
+            selected=self.delegate.name,
+            reason="service_unavailable",
+        )
+
+    def make_positions(self, batch: Batch, device: torch.device) -> torch.Tensor:
+        return self.delegate.make_positions(batch, device)
+
+    def make_input_tuple(self, batch: Batch, device: torch.device) -> Tuple[torch.Tensor, torch.Tensor]:
+        return self.delegate.make_input_tuple(batch, device)
+
+    def make_write_tuple(self, batch: Batch, device: torch.device) -> Tuple[torch.Tensor, torch.Tensor]:
+        return self.delegate.make_write_tuple(batch, device)
+
+    @staticmethod
+    def _prefixed_stats(prefix: str, payload: dict[str, int | str]) -> dict[str, int | str]:
+        return {f"{prefix}_{k}": v for k, v in payload.items()}
+
+    def snapshot(self) -> dict[str, int | str]:
+        stats = self.stats.as_dict()
+        stats["delegate_backend"] = self.delegate.name
+        stats.update(self._prefixed_stats("delegate", self.delegate.snapshot()))
+        return stats
 
 
 class ShadowCpuBackend:
@@ -399,11 +470,20 @@ class ShadowCpuBackend:
 
 
 def _create_backend_unwrapped(mode: str):
-    if mode == "python":
+    normalized = mode.strip().lower()
+    if normalized in {"python", "python_cpu"}:
         return PythonCpuBackend()
-    if mode == "rust_hotpath":
+    if normalized in {"rust_hotpath", "rust_inprocess_ffi"}:
         return RustHotpathCpuBackend()
+    if normalized == "rust_service":
+        return RustServiceCpuBackend()
     logger.warning("Unknown CPU backend mode '%s'; fallback to python", mode)
+    record_backend_fallback(
+        component="cpu",
+        requested=normalized,
+        selected="python",
+        reason="unknown_backend",
+    )
     return PythonCpuBackend()
 
 

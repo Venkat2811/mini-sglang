@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import multiprocessing as mp
 from pathlib import Path
+from time import perf_counter_ns
 from typing import List
 
 import torch
@@ -18,7 +19,14 @@ from minisgl.message import (
     UserMsg,
     UserReply,
 )
-from minisgl.utils import ZmqPullQueue, ZmqPushQueue, init_logger
+from minisgl.utils import (
+    ZmqPullQueue,
+    ZmqPushQueue,
+    init_logger,
+    record_backend_fallback,
+    record_backend_selection,
+    record_tokenizer_latency,
+)
 from transformers import AutoTokenizer, LlamaTokenizer
 
 
@@ -66,6 +74,7 @@ def tokenize_worker(
     assert local_bs > 0
     logger = init_logger(__name__, f"tokenizer_{tokenizer_id}")
     backend_mode = str(ENV.TOKENIZER_BACKEND)
+    requested_backend = backend_mode
 
     if backend_mode in {"rust_inprocess", "rust_tokenize_only"}:
         try:
@@ -91,10 +100,22 @@ def tokenize_worker(
                 "Rust tokenizer backend requested but unavailable; fallback to python: %s",
                 exc,
             )
+            record_backend_fallback(
+                component="tokenizer",
+                requested=requested_backend,
+                selected="python",
+                reason="init_error",
+            )
             backend_mode = "python"
 
     if backend_mode not in {"python", "rust_inprocess", "rust_tokenize_only"}:
         logger.warning("Unknown tokenizer backend '%s'; fallback to python", backend_mode)
+        record_backend_fallback(
+            component="tokenizer",
+            requested=backend_mode,
+            selected="python",
+            reason="unknown_backend",
+        )
         backend_mode = "python"
 
     if backend_mode == "python":
@@ -105,6 +126,8 @@ def tokenize_worker(
         tokenize_manager = TokenizeManager(tokenizer)
         detokenize_manager = DetokenizeManager(tokenizer)
         logger.info("Tokenizer backend selected: python")
+
+    record_backend_selection(component="tokenizer", backend=backend_mode)
 
     if ack_queue is not None:
         ack_queue.put(f"Tokenize server {tokenizer_id} is ready")
@@ -121,7 +144,13 @@ def tokenize_worker(
             tokenize_msg = [m for m in pending_msg if isinstance(m, TokenizeMsg)]
             assert len(detokenize_msg) + len(tokenize_msg) == len(pending_msg)
             if len(detokenize_msg) > 0:
+                t0 = perf_counter_ns()
                 replies = detokenize_manager.detokenize(detokenize_msg)
+                record_tokenizer_latency(
+                    duration_ns=perf_counter_ns() - t0,
+                    tokenize_count=0,
+                    detokenize_count=len(detokenize_msg),
+                )
                 batch_output = BatchFrontendMsg(
                     data=[
                         UserReply(
@@ -137,7 +166,13 @@ def tokenize_worker(
                 send_frontend.put(batch_output)
 
             if len(tokenize_msg) > 0:
+                t0 = perf_counter_ns()
                 tensors = tokenize_manager.tokenize(tokenize_msg)
+                record_tokenizer_latency(
+                    duration_ns=perf_counter_ns() - t0,
+                    tokenize_count=len(tokenize_msg),
+                    detokenize_count=0,
+                )
                 batch_output = BatchBackendMsg(
                     data=[
                         UserMsg(
