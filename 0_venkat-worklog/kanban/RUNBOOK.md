@@ -4,6 +4,28 @@ Last updated: 2026-02-14
 
 This runbook records how to set up and run `mini-sglang` locally for reproducible baseline measurement.
 
+## 0. One-Command Harness (Preferred)
+
+Use the built-in harness for stable profiles + JSON output:
+
+```bash
+cd mini-sglang
+source .venv/bin/activate
+
+# Offline baseline
+python -m minisgl.benchmark.harness offline \
+  --out 0_venkat-worklog/kanban/baselines/latest-offline.json \
+  --gate 0_venkat-worklog/kanban/baselines/gates.offline.yaml
+
+# Online baseline (server must already be running)
+python -m minisgl.benchmark.harness online \
+  --base-url http://127.0.0.1:1919 \
+  --out 0_venkat-worklog/kanban/baselines/latest-online.json \
+  --gate 0_venkat-worklog/kanban/baselines/gates.online.yaml
+```
+
+Output is machine-readable JSON and can be archived into a timestamped record.
+
 ## 1. Environment Setup
 
 From repo root, use only relative paths:

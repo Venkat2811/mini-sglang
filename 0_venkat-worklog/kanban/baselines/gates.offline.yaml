@@ -1,0 +1,2 @@
+min_throughput_token_per_s: 2300.0
+min_throughput_req_per_s: 30.0

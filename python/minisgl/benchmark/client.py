@@ -5,12 +5,14 @@ import random
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Tuple, overload
+from typing import Any, Dict, List, overload
 
 from minisgl.utils import UNSET, Unset, init_logger
 from openai import AsyncOpenAI as OpenAI
 from pydantic import BaseModel
 from tqdm.asyncio import tqdm
+
+from .metrics import BenchmarkSummary, summary_lines
 
 logger = init_logger(__name__)
 
@@ -321,70 +323,10 @@ def process_benchmark_results(
     raw_data: List[RawResult],
     tokenizer: Any = UNSET,
 ) -> BenchmarkResult | None:
-    accum_times: List[float] = []
-    first_times: List[float] = []
-    results = [r.tics for r in raw_data]
-    for tics in results:
-        deltas: List[float] = []
-        for i in range(len(tics) - 1):
-            diff = tics[i + 1] - tics[i]
-            deltas.append(diff)
-        first_times.append(deltas[0])
-        accum_times.extend(deltas[1:])
+    summary = BenchmarkSummary.from_raw_results(raw_data)
+    for line in summary_lines(summary):
+        logger.info(line)
 
-    e2e_times = [tics[-1] - tics[0] for tics in results]
-    first_times.sort()
-    accum_times.sort()
-    e2e_times.sort()
-
-    def _print_stats(times: List[float], scale: float = 1.0) -> Tuple[float, ...]:
-        assert len(times) > 0
-        return (
-            scale * sum(times) / len(times),  # avg
-            scale * times[int(len(times) * 0.5)],  # p50
-            scale * times[int(len(times) * 0.9)],  # p90
-            scale * times[int(len(times) * 0.99)],  # p99
-            scale * max(times),  # max
-        )
-
-    def _fmt(x: float) -> str:
-        if x >= 1000:
-            return f"{int(x):>6}"
-        elif x >= 10:
-            return f"{x:>6.2f}"
-        else:
-            return f"{x:>6.4f}"
-
-    avg_ttft, p50_ttft, p90_ttft, p99_ttft, max_ttft = _print_stats(first_times, 1000)
-    avg_tpot, p50_tpot, p90_tpot, p99_tpot, max_tpot = _print_stats(accum_times, 1000)
-    avg_e2e, p50_e2e, p90_e2e, p99_e2e, max_e2e = _print_stats(e2e_times)
-
-    min_time = min(min(r) for r in results)
-    max_time = max(max(r) for r in results)
-    dur = max_time - min_time
-    assert dur > 0, "Duration must be positive"
-
-    num_tokens = sum(len(tic) for tic in results)
-    num_requests = len(results)
-
-    logger.info(f"Num requests: #{num_requests}, Num tokens: #{num_tokens}")
-    logger.info(
-        f"TTFT: {_fmt(avg_ttft)} ms (p50: {_fmt(p50_ttft)} ms, p90: {_fmt(p90_ttft)} ms,"
-        f" p99: {_fmt(p99_ttft)} ms, max: {_fmt(max_ttft)} ms)"
-    )
-    logger.info(
-        f"TPOT: {_fmt(avg_tpot)} ms (p50: {_fmt(p50_tpot)} ms, p90: {_fmt(p90_tpot)} ms,"
-        f" p99: {_fmt(p99_tpot)} ms, max: {_fmt(max_tpot)} ms)"
-    )
-    logger.info(
-        f"E2E:  {_fmt(avg_e2e) }  s (p50: {_fmt(p50_e2e) }  s, p90: {_fmt(p90_e2e) }  s,"
-        f" p99: {_fmt(p99_e2e) }  s, max: {_fmt(max_e2e) }  s)"
-    )
-    logger.info(f"Duration: {_fmt(dur)} s")
-    logger.info(f"Throughput: {_fmt(num_tokens / dur)} token/s, {_fmt(num_requests / dur)} req/s")
-
-    # normalize the time to start from zero
-    results = [[r - min_time for r in tics] for tics in results]
     if isinstance(tokenizer, Unset):
         return None
 

@@ -5,8 +5,8 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 
 ## Baseline Snapshot (Local RTX 3060)
 
-- Offline (`LLM` path): ~2647 output tok/s in 16-request small-batch run.
-- Online (`/v1/chat/completions`): ~420 tok/s, TTFT ~959 ms, TPOT ~4.37 ms in 8-request run.
+- Offline (`LLM` path): ~2667 output tok/s in 16-request small-batch run.
+- Online (`/v1/chat/completions`): ~1568 tok/s, TTFT ~50 ms, TPOT ~4.44 ms in 8-request run.
 - Goal: beat these numbers while preserving behavior.
 
 ## Baseline Documentation
@@ -30,7 +30,7 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 
 ## Priority Order (Execution Sequence)
 
-1. `todo/P0-001-baseline-harness-and-gates.md`
+1. `in-progress/P0-001-baseline-harness-and-gates.md`
 2. `todo/P0-002-rust-workspace-and-ci-scaffold.md`
 3. `todo/P0-003-rust-radix-cache-equivalence.md`
 4. `todo/P0-004-rust-prefill-admission-and-batch-mapping.md`

@@ -1,0 +1,5 @@
+min_throughput_token_per_s: 380.0
+min_throughput_req_per_s: 5.5
+max_avg_ttft_ms: 1200.0
+max_avg_tpot_ms: 6.0
+max_avg_e2e_s: 2.0
