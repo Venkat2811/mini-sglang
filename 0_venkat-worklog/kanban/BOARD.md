@@ -17,7 +17,9 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 - Deterministic token parity check (`python` vs `rust_hotpath`): passed for both text and token prompt sets.
 - Tokenizer-heavy online rerun: Rust tokenizer backends remain behind Python tokenizer on this machine (`~5%` to `~7%` delta in latest controlled sequential runs).
 - Typed transport microbench (new schema v1) shows strong CPU-side serialization gain (`+74%` backend ops/s, `+107%` tokenizer ops/s).
+- Typed transport schema v1 is now default hot path with legacy rollback flag.
 - Queue transport latency counters are available behind `MINISGL_TRANSPORT_LATENCY_STATS`.
+- Rust gateway remains optional reference work; minisgl cutover target is Rust CPU service behind existing Python API server.
 - Details recorded in `0_venkat-worklog/baselines/2026-02-14-rtx3060-qwen2.5-0.5b.md`.
 - Parity corpus details: `0_venkat-worklog/baselines/2026-02-14-shadow-parity-corpus.md`.
 
@@ -28,6 +30,7 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 - Tokenizer backend A/B: `0_venkat-worklog/baselines/2026-02-14-tokenizer-backend-ab.md`
 - Tokenizer research note: `0_venkat-worklog/research/2026-02-14-rust-tokenizer-landscape.md`
 - Typed transport microbench: `0_venkat-worklog/baselines/latest-transport-overhead.json`
+- Release gate config: `0_venkat-worklog/baselines/gates.release.yaml`
 
 ## Privacy Guardrails (Public Repo)
 
@@ -46,11 +49,11 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 ## Priority Order (Execution Sequence)
 
 1. `in-progress/P1-008-rust-tokenizer-detokenizer-service.md`
-2. `in-progress/P1-009-typed-transport-migration.md`
-3. `todo/P1-010-observability-and-release-gates.md`
-4. `todo/P1-011-rust-cpu-service-cutover-no-inprocess-ffi.md`
-5. `todo/P1-012-remove-pyo3-runtime-path.md`
-6. `backlog/BK-001-super-optimized-runtime-track.md`
+2. `in-progress/P1-010-observability-and-release-gates.md`
+3. `todo/P1-011-rust-cpu-service-cutover-no-inprocess-ffi.md`
+4. `todo/P1-012-remove-pyo3-runtime-path.md`
+5. `backlog/BK-001-super-optimized-runtime-track.md`
+6. `backlog/BK-002-standard-corpus-benchmark-sharegpt.md`
 
 ## Definition of Done (Per Card)
 

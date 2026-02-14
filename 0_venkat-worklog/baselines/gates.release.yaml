@@ -1,0 +1,10 @@
+perf_summary: 0_venkat-worklog/baselines/latest-online.json
+perf_gate: 0_venkat-worklog/baselines/gates.online.yaml
+parity_json: 0_venkat-worklog/baselines/latest-token-parity.json
+shadow_jsonl: 0_venkat-worklog/baselines/latest-shadow-divergence.jsonl
+max_shadow_divergences: 0
+stability_summaries:
+  - 0_venkat-worklog/baselines/latest-online.json
+max_throughput_cv: 0.10
+max_ttft_cv: 0.15
+out: 0_venkat-worklog/baselines/latest-release-gate.json

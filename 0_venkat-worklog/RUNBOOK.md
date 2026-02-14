@@ -273,12 +273,15 @@ MINISGL_TOKENIZER_BACKEND=rust_inprocess python -m minisgl \
 
 ## 9. Typed Transport Mode (Schema v1)
 
-Enable typed message transport (legacy remains default and decoder stays dual-stack):
+Typed message transport is enabled by default (schema v1).
+Decoder remains dual-stack, so legacy payloads are still accepted.
+
+Use explicit rollback switch to force legacy recursive serialization:
 
 ```bash
 cd mini-sglang
 source .venv/bin/activate
-MINISGL_TYPED_TRANSPORT=1 python -m minisgl \
+MINISGL_TYPED_TRANSPORT=0 python -m minisgl \
   --model-path Qwen/Qwen2.5-0.5B-Instruct \
   --host 127.0.0.1 \
   --port 1919
@@ -302,4 +305,31 @@ cd mini-sglang
 source .venv/bin/activate
 python -m minisgl.benchmark.transport_overhead \
   --out 0_venkat-worklog/baselines/latest-transport-overhead.json
+```
+
+## 10. Release Gate (Perf + Parity + Stability)
+
+Evaluate go/no-go from benchmark artifacts:
+
+```bash
+cd mini-sglang
+source .venv/bin/activate
+python -m minisgl.benchmark.release_gate \
+  --config 0_venkat-worklog/baselines/gates.release.yaml
+```
+
+Override specific inputs ad-hoc:
+
+```bash
+cd mini-sglang
+source .venv/bin/activate
+python -m minisgl.benchmark.release_gate \
+  --perf-summary 0_venkat-worklog/baselines/latest-online.json \
+  --perf-gate 0_venkat-worklog/baselines/gates.online.yaml \
+  --parity-json 0_venkat-worklog/baselines/latest-token-parity.json \
+  --shadow-jsonl 0_venkat-worklog/baselines/latest-shadow-divergence.jsonl \
+  --max-shadow-divergences 0 \
+  --stability-summaries 0_venkat-worklog/baselines/latest-online.json \
+  --max-throughput-cv 0.10 \
+  --max-ttft-cv 0.15
 ```

@@ -1,7 +1,7 @@
 # P1-009: Typed Transport Migration
 
 Priority: P1  
-Status: in-progress  
+Status: done  
 Depends on: P1-008
 
 ## Objective
@@ -25,8 +25,8 @@ Replace Python dataclass recursive serialization path with typed schema and lowe
 - [x] Implement typed transport and pass compatibility suite.
 
 3. Refactor
-- [ ] Remove dead serialization code from hot path after cutover.
-- [ ] Keep compatibility mode for rollback window.
+- [x] Remove dead serialization code from hot path after cutover.
+- [x] Keep compatibility mode for rollback window.
 
 ## Acceptance Criteria
 
@@ -41,7 +41,7 @@ Replace Python dataclass recursive serialization path with typed schema and lowe
   - frontend messages (`UserReply`, `BatchFrontendMsg`)
 - Added dual-stack decode behavior:
   - decoder accepts both typed schema payloads and legacy recursive dataclass payloads.
-  - encoder switches via env flag (`false` default keeps legacy path).
+  - encoder switches via env flag (`MINISGL_TYPED_TRANSPORT`); typed path is default and legacy path remains available via rollback flag (`0`).
 - Added tests:
   - `tests/misc/test_typed_transport.py`
   - covers typed roundtrip, legacy compatibility, and unknown schema rejection.

@@ -6,12 +6,12 @@ Depends on: P1-008, P1-009, P1-010
 
 ## Objective
 
-Cut over hot CPU path from in-process PyO3 calls to out-of-process Rust CPU service while keeping Python GPU worker unchanged.
+Cut over hot CPU path from in-process PyO3 calls to out-of-process Rust CPU service while keeping Python GPU worker and existing Python API server unchanged (no mandatory Rust gateway in minisgl).
 
 ## Checklist
 
 - [ ] Define cutover architecture and data flow:
-  - [ ] Python scheduler/tokenizer client to Rust CPU service transport path
+  - [ ] Python scheduler/tokenizer client to Rust CPU service transport path (behind current Python API server)
   - [ ] Rust CPU service request router and worker model
   - [ ] timeout/retry/error contracts
 - [ ] Add runtime mode flags:
