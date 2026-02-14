@@ -1,6 +1,7 @@
 use std::{env, net::SocketAddr, sync::Arc, time::Duration};
 
 use axum::{
+    body::Body,
     extract::State,
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -146,18 +147,26 @@ fn worker_health_url(worker: &str) -> String {
     format!("{}/healthz", worker.trim_end_matches('/'))
 }
 
+fn worker_ready_url(worker: &str) -> String {
+    format!("{}/v1/models", worker.trim_end_matches('/'))
+}
+
 fn worker_chat_url(worker: &str) -> String {
     format!("{}/v1/chat/completions", worker.trim_end_matches('/'))
 }
 
 async fn worker_is_healthy(state: &GatewayState, worker: &str) -> bool {
-    match state.http_client.get(worker_health_url(worker)).send().await {
-        Ok(resp) => resp.status().is_success(),
-        Err(err) => {
-            warn!(worker = %worker, error = %err, "worker health probe failed");
-            false
+    let probe_urls = [worker_health_url(worker), worker_ready_url(worker)];
+    for url in probe_urls {
+        match state.http_client.get(&url).send().await {
+            Ok(resp) if resp.status().is_success() => return true,
+            Ok(_) => {}
+            Err(err) => {
+                warn!(worker = %worker, error = %err, "worker health probe failed");
+            }
         }
     }
+    false
 }
 
 async fn readiness(State(state): State<GatewayState>) -> Response {
@@ -229,21 +238,38 @@ async fn chat_completions(State(state): State<GatewayState>, Json(body): Json<Va
         match state.http_client.post(&url).json(&body).send().await {
             Ok(resp) => {
                 let status = StatusCode::from_u16(resp.status().as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
-                match resp.json::<Value>().await {
-                    Ok(payload) => return (status, Json(payload)).into_response(),
+                let content_type = resp
+                    .headers()
+                    .get(reqwest::header::CONTENT_TYPE)
+                    .and_then(|v| v.to_str().ok())
+                    .unwrap_or("application/json")
+                    .to_string();
+                match resp.bytes().await {
+                    Ok(bytes) => {
+                        if let Ok(payload) = serde_json::from_slice::<Value>(&bytes) {
+                            return (status, Json(payload)).into_response();
+                        }
+                        let mut builder = Response::builder().status(status);
+                        if let Ok(value) = axum::http::HeaderValue::from_str(&content_type) {
+                            builder = builder.header(axum::http::header::CONTENT_TYPE, value);
+                        }
+                        return match builder.body(Body::from(bytes.to_vec())) {
+                            Ok(response) => response,
+                            Err(_) => (
+                                StatusCode::BAD_GATEWAY,
+                                Json(json!({
+                                    "error": {
+                                        "message": "gateway failed to forward upstream payload",
+                                        "type": "bad_gateway",
+                                        "code": "minisgl_cpu_gateway_forward_error",
+                                    }
+                                })),
+                            )
+                                .into_response(),
+                        };
+                    }
                     Err(err) => {
-                        warn!(worker = %worker, error = %err, "chat pass-through decode failed");
-                        return (
-                            StatusCode::BAD_GATEWAY,
-                            Json(json!({
-                                "error": {
-                                    "message": "worker returned non-json payload",
-                                    "type": "bad_gateway",
-                                    "code": "minisgl_cpu_gateway_upstream_non_json",
-                                }
-                            })),
-                        )
-                            .into_response();
+                        warn!(worker = %worker, error = %err, "chat pass-through read failed");
                     }
                 }
             }
@@ -300,6 +326,28 @@ mod tests {
         let listener = tokio::net::TcpListener::bind(SocketAddr::from(([127, 0, 0, 1], 0)))
             .await
             .expect("bind mock worker");
+        let addr = listener.local_addr().expect("local addr");
+        let handle = tokio::spawn(async move {
+            let _ = axum::serve(listener, app).await;
+        });
+        (format!("http://{addr}"), handle)
+    }
+
+    async fn spawn_mock_stream_worker() -> (String, tokio::task::JoinHandle<()>) {
+        let app = Router::new()
+            .route("/v1/models", get(|| async { Json(json!({"ok": true})) }))
+            .route(
+                "/v1/chat/completions",
+                post(|| async {
+                    (
+                        [(axum::http::header::CONTENT_TYPE, "text/event-stream")],
+                        "data: {\"id\":\"mock-stream\"}\n\ndata: [DONE]\n\n",
+                    )
+                }),
+            );
+        let listener = tokio::net::TcpListener::bind(SocketAddr::from(([127, 0, 0, 1], 0)))
+            .await
+            .expect("bind mock stream worker");
         let addr = listener.local_addr().expect("local addr");
         let handle = tokio::spawn(async move {
             let _ = axum::serve(listener, app).await;
@@ -373,6 +421,36 @@ mod tests {
             .expect("read body");
         let payload: Value = serde_json::from_slice(&body).expect("parse json");
         assert_eq!(payload["id"], "mock");
+        handle.abort();
+    }
+
+    #[tokio::test]
+    async fn chat_completions_passthrough_supports_streaming_payloads() {
+        let (worker, handle) = spawn_mock_stream_worker().await;
+        let app = build_app(test_state(vec![worker]));
+        let request = Request::builder()
+            .method("POST")
+            .uri("/v1/chat/completions")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"model":"test-model","messages":[{"role":"user","content":"hello"}]}"#,
+            ))
+            .expect("request");
+        let response = app.oneshot(request).await.expect("response");
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response
+                .headers()
+                .get(axum::http::header::CONTENT_TYPE)
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or(""),
+            "text/event-stream"
+        );
+        let body = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("read body");
+        let payload = String::from_utf8(body.to_vec()).expect("utf8");
+        assert!(payload.contains("mock-stream"));
         handle.abort();
     }
 }

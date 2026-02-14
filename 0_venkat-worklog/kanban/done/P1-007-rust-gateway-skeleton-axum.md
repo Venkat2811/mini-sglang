@@ -1,7 +1,7 @@
 # P1-007: Rust Gateway Skeleton (Axum/Tokio)
 
 Priority: P1  
-Status: in-progress  
+Status: done  
 Depends on: P0-006
 
 ## Objective
@@ -39,7 +39,7 @@ Create Rust control-plane skeleton for API ingress and lifecycle, while Python G
 
 ## Acceptance Criteria
 
-- [ ] Gateway can front existing Python server without breaking client behavior.
+- [x] Gateway can front existing Python server without breaking client behavior.
 - [x] Health checks correctly reflect worker availability.
 
 ## Progress Notes (2026-02-14)
@@ -64,3 +64,8 @@ Create Rust control-plane skeleton for API ingress and lifecycle, while Python G
 - Validation:
   - `cargo test -p minisgl-cpu-gateway` passed.
   - `cargo clippy -p minisgl-cpu-gateway --all-targets -- -D warnings` passed.
+  - End-to-end check against real Python minisgl server:
+    - backend launch: `.venv/bin/python -m minisgl ... --port 1919`
+    - gateway launch: `MINISGL_GATEWAY_WORKERS=http://127.0.0.1:1919 cargo run -p minisgl-cpu-gateway`
+    - readiness via gateway: `GET /readiness` -> `200` (`ready=true`, `healthy_workers=1`)
+    - pass-through via gateway: `POST /v1/chat/completions` -> streamed `data: ... [DONE]` with `HTTP 200`.

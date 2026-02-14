@@ -39,13 +39,12 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 
 ## Priority Order (Execution Sequence)
 
-1. `in-progress/P1-007-rust-gateway-skeleton-axum.md`
-2. `todo/P1-008-rust-tokenizer-detokenizer-service.md`
-3. `todo/P1-009-typed-transport-migration.md`
-4. `todo/P1-010-observability-and-release-gates.md`
-5. `todo/P1-011-rust-cpu-service-cutover-no-inprocess-ffi.md`
-6. `todo/P1-012-remove-pyo3-runtime-path.md`
-7. `backlog/BK-001-super-optimized-runtime-track.md`
+1. `todo/P1-008-rust-tokenizer-detokenizer-service.md`
+2. `todo/P1-009-typed-transport-migration.md`
+3. `todo/P1-010-observability-and-release-gates.md`
+4. `todo/P1-011-rust-cpu-service-cutover-no-inprocess-ffi.md`
+5. `todo/P1-012-remove-pyo3-runtime-path.md`
+6. `backlog/BK-001-super-optimized-runtime-track.md`
 
 ## Definition of Done (Per Card)
 
