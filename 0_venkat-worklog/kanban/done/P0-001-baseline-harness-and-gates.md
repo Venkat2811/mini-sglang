@@ -41,10 +41,10 @@ Create repeatable local baseline runs (offline + online) so every Rust change is
   - offline ~2667 tok/s
   - online ~1568 tok/s
 - Existing documented runbook and snapshot:
-  - `../RUNBOOK.md`
-  - `../baselines/2026-02-14-rtx3060-qwen2.5-0.5b.md`
+  - `0_venkat-worklog/RUNBOOK.md`
+  - `0_venkat-worklog/baselines/2026-02-14-rtx3060-qwen2.5-0.5b.md`
 - Harness and gates:
   - `python -m minisgl.benchmark.harness offline ...`
   - `python -m minisgl.benchmark.harness online ...`
-  - `../baselines/gates.offline.yaml`
-  - `../baselines/gates.online.yaml`
+  - `0_venkat-worklog/baselines/gates.offline.yaml`
+  - `0_venkat-worklog/baselines/gates.online.yaml`

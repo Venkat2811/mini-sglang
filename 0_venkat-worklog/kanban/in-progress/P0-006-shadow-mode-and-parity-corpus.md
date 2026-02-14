@@ -69,5 +69,5 @@ Establish parity confidence before broader rollout by running Rust decisions in 
 - Added deterministic token parity CLI + tests:
   - tool: `python/minisgl/benchmark/token_parity.py`
   - tests: `tests/misc/test_token_parity.py`
-  - run artifact: `0_venkat-worklog/kanban/baselines/latest-token-parity.json`
+  - run artifact: `0_venkat-worklog/baselines/latest-token-parity.json`
   - observed: `parity_passed=True` (`text_prompts` and `token_prompts` both zero mismatches).

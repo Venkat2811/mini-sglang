@@ -14,14 +14,14 @@ source .venv/bin/activate
 
 # Offline baseline
 python -m minisgl.benchmark.harness offline \
-  --out 0_venkat-worklog/kanban/baselines/latest-offline.json \
-  --gate 0_venkat-worklog/kanban/baselines/gates.offline.yaml
+  --out 0_venkat-worklog/baselines/latest-offline.json \
+  --gate 0_venkat-worklog/baselines/gates.offline.yaml
 
 # Online baseline (server must already be running)
 python -m minisgl.benchmark.harness online \
   --base-url http://127.0.0.1:1919 \
-  --out 0_venkat-worklog/kanban/baselines/latest-online.json \
-  --gate 0_venkat-worklog/kanban/baselines/gates.online.yaml
+  --out 0_venkat-worklog/baselines/latest-online.json \
+  --gate 0_venkat-worklog/baselines/gates.online.yaml
 ```
 
 Output is machine-readable JSON and can be archived into a timestamped record.
@@ -162,7 +162,7 @@ Terminal 1: stop server with `Ctrl+C`.
 
 - Record only relative paths and sanitized host addresses.
 - Never commit secrets, user/home paths, or personal identifiers.
-- Keep benchmark logs in `kanban/baselines/` with timestamp + model name.
+- Keep benchmark logs in `0_venkat-worklog/baselines/` with timestamp + model name.
 
 ## 6. CPU Shadow Mode (Parity Diagnostics)
 
@@ -175,7 +175,7 @@ cd mini-sglang
 source .venv/bin/activate
 MINISGL_CPU_BACKEND=rust_hotpath \
 MINISGL_CPU_BACKEND_SHADOW=1 \
-MINISGL_CPU_BACKEND_SHADOW_REPORT=0_venkat-worklog/kanban/baselines/latest-shadow-divergence.jsonl \
+MINISGL_CPU_BACKEND_SHADOW_REPORT=0_venkat-worklog/baselines/latest-shadow-divergence.jsonl \
 MINISGL_CPU_BACKEND_SHADOW_MAX_DIFFS=256 \
 python -m minisgl \
   --model-path Qwen/Qwen2.5-0.5B-Instruct \
@@ -193,7 +193,7 @@ cd mini-sglang
 source .venv/bin/activate
 python -m minisgl.benchmark.harness online \
   --base-url http://127.0.0.1:1919 \
-  --out 0_venkat-worklog/kanban/baselines/latest-online-shadow-check.json
+  --out 0_venkat-worklog/baselines/latest-online-shadow-check.json
 ```
 
 Terminal 2: summarize divergence report
@@ -202,7 +202,7 @@ Terminal 2: summarize divergence report
 cd mini-sglang
 source .venv/bin/activate
 python -m minisgl.benchmark.shadow_report \
-  --input 0_venkat-worklog/kanban/baselines/latest-shadow-divergence.jsonl \
+  --input 0_venkat-worklog/baselines/latest-shadow-divergence.jsonl \
   --top 20 \
   --allow-missing
 ```
@@ -223,7 +223,7 @@ cd mini-sglang/python
   --max-input-len 64 \
   --cuda-graph-max-bs 1 \
   --master-port 2380 \
-  --out ../0_venkat-worklog/kanban/baselines/latest-token-parity.json
+  --out ../0_venkat-worklog/baselines/latest-token-parity.json
 ```
 
 Expected output:

@@ -15,12 +15,12 @@ Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then
 - Online: Rust backend ahead (latest run delta `+0.69%` throughput).
 - Shadow parity check (offline deterministic profile): `0` divergences logged.
 - Deterministic token parity check (`python` vs `rust_hotpath`): passed for both text and token prompt sets.
-- Details recorded in `baselines/2026-02-14-rtx3060-qwen2.5-0.5b.md`.
+- Details recorded in `0_venkat-worklog/baselines/2026-02-14-rtx3060-qwen2.5-0.5b.md`.
 
 ## Baseline Documentation
 
-- Runbook (sanitized + reproducible): `RUNBOOK.md`
-- Recorded run results: `baselines/2026-02-14-rtx3060-qwen2.5-0.5b.md`
+- Runbook (sanitized + reproducible): `0_venkat-worklog/RUNBOOK.md`
+- Recorded run results: `0_venkat-worklog/baselines/2026-02-14-rtx3060-qwen2.5-0.5b.md`
 
 ## Privacy Guardrails (Public Repo)
 

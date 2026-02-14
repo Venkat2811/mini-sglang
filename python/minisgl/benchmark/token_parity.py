@@ -49,7 +49,7 @@ class SetResult:
 
 
 def _default_output() -> Path:
-    return Path("0_venkat-worklog/kanban/baselines/latest-token-parity.json")
+    return Path("0_venkat-worklog/baselines/latest-token-parity.json")
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:

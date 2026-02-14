@@ -24,7 +24,7 @@ logger = init_logger(__name__)
 
 
 def _default_output(mode: str) -> Path:
-    return Path("0_venkat-worklog/kanban/baselines") / f"latest-{mode}.json"
+    return Path("0_venkat-worklog/baselines") / f"latest-{mode}.json"
 
 
 def _write_json(path: Path, payload: Dict[str, Any]) -> None:

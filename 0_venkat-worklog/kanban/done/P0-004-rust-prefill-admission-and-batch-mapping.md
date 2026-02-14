@@ -63,7 +63,7 @@ Move prefill admission logic and batch metadata mapping to Rust hot path while k
   - `cargo test --workspace` passed.
   - `.venv/bin/python -m pytest tests/misc/test_token_parity.py -q` passed.
   - Deterministic token parity run passed:
-    - `.venv/bin/python -m minisgl.benchmark.token_parity --model-path Qwen/Qwen2.5-0.5B-Instruct --max-tokens 16 --token-prompt-count 4 --min-input-len 32 --max-input-len 64 --cuda-graph-max-bs 1 --master-port 2380 --out 0_venkat-worklog/kanban/baselines/latest-token-parity.json`
+    - `.venv/bin/python -m minisgl.benchmark.token_parity --model-path Qwen/Qwen2.5-0.5B-Instruct --max-tokens 16 --token-prompt-count 4 --min-input-len 32 --max-input-len 64 --cuda-graph-max-bs 1 --master-port 2380 --out 0_venkat-worklog/baselines/latest-token-parity.json`
     - result: `parity_passed=True`, no mismatches in both `text_prompts` and `token_prompts`.
   - Mixed workload baseline A/B remains Rust-ahead in latest run:
     - offline throughput delta: `+0.07%`
