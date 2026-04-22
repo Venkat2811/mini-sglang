@@ -6,7 +6,6 @@ import os
 import socket
 import subprocess
 import sys
-import tempfile
 import time
 from dataclasses import dataclass
 from datetime import timedelta
@@ -66,6 +65,16 @@ def parse_args() -> argparse.Namespace:
         default=EXTENSION_DIR,
         help="Path containing the custom c10d extension setup.py",
     )
+    parser.add_argument(
+        "--retain-dir",
+        type=Path,
+        help="Optional directory where per-backend worker JSON/stdout/stderr should be retained",
+    )
+    parser.add_argument(
+        "--output-json",
+        type=Path,
+        help="Optional path to write the aggregate benchmark summary as JSON",
+    )
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--results-dir", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--backend-name", help=argparse.SUPPRESS)
@@ -116,78 +125,84 @@ def run_backend(
     extra_env: Dict[str, str] | None = None,
 ) -> Dict[str, Any]:
     port = find_free_port()
-    with tempfile.TemporaryDirectory(prefix=f"{backend_label}_") as tmpdir:
-        results_dir = Path(tmpdir)
-        processes = []
-        for rank in range(args.world_size):
-            env = os.environ.copy()
-            env.update(
-                {
-                    "MASTER_ADDR": "127.0.0.1",
-                    "MASTER_PORT": str(port),
-                    "WORLD_SIZE": str(args.world_size),
-                    "RANK": str(rank),
-                    "PYTHONPATH": str(ROOT / "python"),
-                }
+    results_dir = (
+        args.retain_dir.resolve() / backend_label
+        if args.retain_dir is not None
+        else (ROOT / ".tmp" / "bench_c10d_control_plane" / f"{backend_label}_{port}")
+    )
+    results_dir.mkdir(parents=True, exist_ok=True)
+    processes = []
+    for rank in range(args.world_size):
+        env = os.environ.copy()
+        env.update(
+            {
+                "MASTER_ADDR": "127.0.0.1",
+                "MASTER_PORT": str(port),
+                "WORLD_SIZE": str(args.world_size),
+                "RANK": str(rank),
+                "PYTHONPATH": str(ROOT / "python"),
+            }
+        )
+        if extra_env:
+            env.update(extra_env)
+        cmd = [
+            sys.executable,
+            str(Path(__file__).resolve()),
+            "--worker",
+            f"--results-dir={results_dir}",
+            f"--extension-dir={extension_dir}",
+            f"--backend-name={backend_name}",
+            f"--backend-label={backend_label}",
+            f"--rank={rank}",
+            f"--world-size={args.world_size}",
+            f"--warmup={args.warmup}",
+            f"--iterations={args.iterations}",
+            f"--master-port={port}",
+        ]
+        processes.append(
+            subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                env=env,
+                cwd=ROOT,
             )
-            if extra_env:
-                env.update(extra_env)
-            cmd = [
-                sys.executable,
-                str(Path(__file__).resolve()),
-                "--worker",
-                f"--results-dir={results_dir}",
-                f"--extension-dir={extension_dir}",
-                f"--backend-name={backend_name}",
-                f"--backend-label={backend_label}",
-                f"--rank={rank}",
-                f"--world-size={args.world_size}",
-                f"--warmup={args.warmup}",
-                f"--iterations={args.iterations}",
-                f"--master-port={port}",
-            ]
-            processes.append(
-                subprocess.Popen(
-                    cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                    env=env,
-                    cwd=ROOT,
-                )
-            )
+        )
 
-        stdout_chunks = []
-        stderr_chunks = []
-        failed = []
-        for rank, proc in enumerate(processes):
-            try:
-                stdout, stderr = proc.communicate(timeout=90)
-            except subprocess.TimeoutExpired:
-                for child in processes:
-                    child.kill()
-                stdout, stderr = proc.communicate()
-                raise RuntimeError(
-                    f"{backend_label} timed out while waiting for rank {rank}\n"
-                    f"partial stdout:\n{stdout}\npartial stderr:\n{stderr}"
-                )
-            if stdout:
-                stdout_chunks.append(f"[rank{rank}]\n{stdout}")
-            if stderr:
-                stderr_chunks.append(f"[rank{rank}]\n{stderr}")
-            if proc.returncode != 0:
-                failed.append(rank)
-        if failed:
+    stdout_chunks = []
+    stderr_chunks = []
+    failed = []
+    for rank, proc in enumerate(processes):
+        try:
+            stdout, stderr = proc.communicate(timeout=90)
+        except subprocess.TimeoutExpired:
+            for child in processes:
+                child.kill()
+            stdout, stderr = proc.communicate()
             raise RuntimeError(
-                f"{backend_label} worker failure on ranks {failed}\n"
-                f"stdout:\n{''.join(stdout_chunks)}\n"
-                f"stderr:\n{''.join(stderr_chunks)}"
+                f"{backend_label} timed out while waiting for rank {rank}\n"
+                f"partial stdout:\n{stdout}\npartial stderr:\n{stderr}"
             )
+        (results_dir / f"rank{rank}.stdout.log").write_text(stdout)
+        (results_dir / f"rank{rank}.stderr.log").write_text(stderr)
+        if stdout:
+            stdout_chunks.append(f"[rank{rank}]\n{stdout}")
+        if stderr:
+            stderr_chunks.append(f"[rank{rank}]\n{stderr}")
+        if proc.returncode != 0:
+            failed.append(rank)
+    if failed:
+        raise RuntimeError(
+            f"{backend_label} worker failure on ranks {failed}\n"
+            f"stdout:\n{''.join(stdout_chunks)}\n"
+            f"stderr:\n{''.join(stderr_chunks)}"
+        )
 
-        per_rank = []
-        for rank in range(args.world_size):
-            rank_file = results_dir / f"{backend_label}_rank{rank}.json"
-            per_rank.append(json.loads(rank_file.read_text()))
+    per_rank = []
+    for rank in range(args.world_size):
+        rank_file = results_dir / f"{backend_label}_rank{rank}.json"
+        per_rank.append(json.loads(rank_file.read_text()))
 
     scenario_rows: Dict[str, Dict[str, float]] = {}
     for scenario in SCENARIOS:
@@ -372,6 +387,22 @@ def main() -> int:
         backend_label="glooext_myelon",
         extra_env={"MINISGL_C10D_GLOOEXT_TRANSPORT": "myelon"},
     )
+    if args.output_json is not None:
+        args.output_json.parent.mkdir(parents=True, exist_ok=True)
+        args.output_json.write_text(
+            json.dumps(
+                {
+                    "world_size": args.world_size,
+                    "warmup": args.warmup,
+                    "iterations": args.iterations,
+                    "extension_dir": str(extension_dir),
+                    "builtin_gloo": builtin,
+                    "glooext_uv": ext_uv,
+                    "glooext_myelon": ext_myelon,
+                },
+                indent=2,
+            )
+        )
     print_table(args, builtin, ext_uv, ext_myelon)
     return 0
 
