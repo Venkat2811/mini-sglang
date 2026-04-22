@@ -146,6 +146,22 @@ def parse_args(args: List[str], run_shell: bool = False) -> Tuple[ServerArgs, bo
     )
 
     parser.add_argument(
+        "--tp-cpu-backend",
+        type=str,
+        default=ServerArgs.tp_cpu_backend,
+        choices=["gloo", "glooext"],
+        help="CPU-side process-group backend for tensor-parallel control traffic.",
+    )
+
+    parser.add_argument(
+        "--tp-cpu-transport",
+        type=str,
+        default=ServerArgs.tp_cpu_transport,
+        choices=["uv", "myelon"],
+        help="Transport to use under the custom glooext CPU backend.",
+    )
+
+    parser.add_argument(
         "--cuda-graph-max-bs",
         "--graph",
         type=int,

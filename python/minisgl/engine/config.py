@@ -17,6 +17,8 @@ class EngineConfig:
     model_path: str
     tp_info: DistributedInfo
     dtype: torch.dtype
+    tp_cpu_backend: str = "gloo"
+    tp_cpu_transport: str = "uv"
     max_running_req: int = 256
     attention_backend: str = "auto"
     moe_backend: str = "auto"

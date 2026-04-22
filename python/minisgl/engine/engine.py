@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from datetime import timedelta
 from typing import Any, Dict, NamedTuple, Tuple
 
@@ -18,6 +19,19 @@ from .graph import GraphRunner, get_free_memory, mem_GB
 from .sample import BatchSamplingArgs, Sampler
 
 logger = init_logger(__name__)
+
+
+def _maybe_import_glooext_backend() -> None:
+    extension_dir = os.environ.get("MINISGL_C10D_GLOOEXT_EXTENSION_DIR")
+    if extension_dir:
+        import sys
+        from pathlib import Path
+
+        resolved = str(Path(extension_dir).resolve())
+        if resolved not in sys.path:
+            sys.path.insert(0, resolved)
+
+    __import__("myelon_c10d_backend")
 
 
 class ForwardOutput(NamedTuple):
@@ -110,9 +124,14 @@ class Engine:
         )
 
     def _init_communication(self, config: EngineConfig) -> torch.distributed.ProcessGroup:
+        cpu_backend = config.tp_cpu_backend
+        if cpu_backend == "glooext":
+            os.environ["MINISGL_C10D_GLOOEXT_TRANSPORT"] = config.tp_cpu_transport
+            _maybe_import_glooext_backend()
+
         if config.tp_info.size == 1 or config.use_pynccl:
             torch.distributed.init_process_group(
-                backend="gloo",
+                backend=cpu_backend,
                 rank=config.tp_info.rank,
                 world_size=config.tp_info.size,
                 timeout=timedelta(seconds=config.distributed_timeout),
@@ -132,7 +151,7 @@ class Engine:
                 timeout=timedelta(seconds=config.distributed_timeout),
                 init_method=config.distributed_addr,
             )
-            tp_cpu_group = torch.distributed.new_group(backend="gloo")
+            tp_cpu_group = torch.distributed.new_group(backend=cpu_backend)
             assert tp_cpu_group is not None
         return tp_cpu_group
 
