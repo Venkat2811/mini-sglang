@@ -44,3 +44,35 @@ The retained proxy shapes are:
 - small metadata broadcast for NCCL UID fanout
 - 16-byte allreduce for `_sync_get_memory`
 - 1 KiB allreduce for small CPU-side state sync
+
+## 3. Compare real torch.distributed collectives through a custom c10d backend
+
+This path uses an out-of-tree CPU-only c10d backend that links against the external
+`libgloo.a` build and selects either `uv` or `myelon` transport underneath via
+`MINISGL_C10D_GLOOEXT_TRANSPORT`.
+
+Install the missing runtime/build helpers in the same `uv` venv first:
+
+```bash
+uv pip install --python .venv-gloo/bin/python numpy ninja
+```
+
+Then run:
+
+```bash
+python benchmark/synthetic/bench_c10d_control_plane.py \
+  --world-size=4 \
+  --warmup=20 \
+  --iterations=100
+```
+
+This benchmark exercises the real PyTorch API layer for the exact Mini-SGLang-relevant CPU
+operations:
+
+- `dist.barrier()` for `SchedulerIOMixin.sync_all_ranks()`
+- `dist.broadcast()` on a scalar `int64` tensor for scheduler count fanout
+- `dist.broadcast_object_list()` for the PyNCCL unique-ID fanout shape
+- `dist.all_reduce(..., ReduceOp.MIN)` on `[free, -free]` for `_sync_get_memory()`
+
+The retained results from this path are in
+`benchmark/synthetic/2026-04-21_c10d_results.md`.
