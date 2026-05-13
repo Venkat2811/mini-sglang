@@ -3,20 +3,35 @@
 Last updated: 2026-05-14
 Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then performance.
 
-## Closure Status (2026-05-14)
+## Closure Status (2026-05-14, complete)
 
-Active closure of `rust-engine-cpu-attempt-1` on branch `rust-engine-cpu-attempt-1-closure`. Driving RFC lives in the agentic-engineering workspace, not in this repo:
+Closure of `rust-engine-cpu-attempt-1` shipped on branch `rust-engine-cpu-attempt-1-closure` with tag `v0.1-learning-complete`.
 
-- `<workspace>/ai-chat-exports/.0_agentic_engineering/8_minisgl/0_rust_cpu_closure/0_rfcs/0001_mini_sglang_rust_cpu_engine_closure_plan.md`
+Outcome per RFC 0001 Decision Tree: **Outcome B (Rust neutral)**.
 
-In-repo closure pointers:
+Measured locally on RTX 3060 with `Qwen/Qwen3-4B` and 20 ShareGPT-style prompts, three sequential runs per backend:
+
+- python median online tok/s: `143.08`
+- rust hotpath median online tok/s: `143.09`
+- delta: `+0.01%`
+- shadow parity divergences across full prompt set: `0`
+- stability CV: python `0.00%`, rust `0.10%` (both pass `<= 10%` gate)
+
+Confirms `sglang-rs`'s architectural choice: in-process FFI is parity-correct but not perf-positive on workloads where GPU is the bottleneck. The next architectural step (out-of-process Rust scheduler service) is in `kanban/deferred/` and is the natural starting point for any continuation.
+
+Driving RFC and kanban (outside this repo):
+
+- `<workspace>/ai-chat-exports/.0_agentic_engineering/8_minisgl/0_rust_cpu_closure/`
+
+In-repo closure artifacts:
 
 - `0_venkat-worklog/closure/CLOSURE_NOTES.md`
-- `0_venkat-worklog/closure/H100_RUNBOOK.md`
-- `0_venkat-worklog/closure/COST_ESTIMATE.md`
-- `0_venkat-worklog/closure/2026-05-14-final-retrospective.md` (draft, placeholders)
+- `0_venkat-worklog/closure/H100_RUNBOOK.md` (retained for future iteration)
+- `0_venkat-worklog/closure/COST_ESTIMATE.md` (retained for future iteration)
+- `0_venkat-worklog/closure/2026-05-14-final-retrospective.md`
+- `0_venkat-worklog/baselines/closure/local_rtx3060/SIDE_BY_SIDE.md`
 
-Closure stops further `P1-*` work and produces one bounded H100 weekend run on `Qwen/Qwen3-4B` with ShareGPT-derived prompts. `P1-011` and `P1-012` move to `kanban/deferred/` at closure tag.
+`P1-011` and `P1-012` moved to `kanban/deferred/` (not completed; explicitly deferred).
 
 ## Baseline Snapshot (Local RTX 3060)
 
