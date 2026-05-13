@@ -1,7 +1,22 @@
 # Rust Minisgl Kanban Board
 
-Last updated: 2026-02-14
+Last updated: 2026-05-14
 Scope: `mini-sglang` CPU-side Rust migration with 1:1 feature parity first, then performance.
+
+## Closure Status (2026-05-14)
+
+Active closure of `rust-engine-cpu-attempt-1` on branch `rust-engine-cpu-attempt-1-closure`. Driving RFC lives in the agentic-engineering workspace, not in this repo:
+
+- `<workspace>/ai-chat-exports/.0_agentic_engineering/8_minisgl/0_rust_cpu_closure/0_rfcs/0001_mini_sglang_rust_cpu_engine_closure_plan.md`
+
+In-repo closure pointers:
+
+- `0_venkat-worklog/closure/CLOSURE_NOTES.md`
+- `0_venkat-worklog/closure/H100_RUNBOOK.md`
+- `0_venkat-worklog/closure/COST_ESTIMATE.md`
+- `0_venkat-worklog/closure/2026-05-14-final-retrospective.md` (draft, placeholders)
+
+Closure stops further `P1-*` work and produces one bounded H100 weekend run on `Qwen/Qwen3-4B` with ShareGPT-derived prompts. `P1-011` and `P1-012` move to `kanban/deferred/` at closure tag.
 
 ## Baseline Snapshot (Local RTX 3060)
 
